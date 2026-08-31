@@ -38,6 +38,25 @@ BUILD=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$APP_PATH/Contents/
 echo "Version: $VERSION (build $BUILD)"
 echo ""
 
+# The exported app must carry the same Sparkle feed and key as the current
+# source tree. Exporting a stale archive silently ships the wrong key, which
+# makes generate_appcast emit an UNSIGNED appcast that every client rejects.
+SRC_PLIST="$PROJECT_DIR/ClaudeIsland/Info.plist"
+APP_PLIST="$APP_PATH/Contents/Info.plist"
+for k in SUPublicEDKey SUFeedURL; do
+    want=$(/usr/libexec/PlistBuddy -c "Print :$k" "$SRC_PLIST" 2>/dev/null || echo "")
+    got=$(/usr/libexec/PlistBuddy -c "Print :$k" "$APP_PLIST" 2>/dev/null || echo "")
+    if [ "$want" != "$got" ]; then
+        echo "ERROR: $k in the built app does not match the source tree."
+        echo "  source: $want"
+        echo "  app:    $got"
+        echo "The archive is stale — re-run ./scripts/build.sh."
+        exit 1
+    fi
+done
+echo "Sparkle feed and key match the source tree."
+echo ""
+
 mkdir -p "$RELEASE_DIR"
 
 # ============================================
@@ -192,6 +211,14 @@ else
 
         # Generate appcast.xml
         "$GENERATE_APPCAST" --ed-key-file "$KEYS_DIR/eddsa_private_key" "$APPCAST_DIR"
+
+        if ! grep -q "edSignature" "$APPCAST_DIR/appcast.xml"; then
+            echo "ERROR: appcast.xml has no sparkle:edSignature."
+            echo "generate_appcast refused to sign — the app's SUPublicEDKey"
+            echo "likely does not match $KEYS_DIR/eddsa_private_key."
+            echo "Sparkle would reject every update from this feed."
+            exit 1
+        fi
 
         echo "Appcast generated at: $APPCAST_DIR/appcast.xml"
     fi
