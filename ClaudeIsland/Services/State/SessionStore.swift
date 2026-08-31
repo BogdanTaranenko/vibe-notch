@@ -149,8 +149,25 @@ actor SessionStore {
 
         let newPhase = event.determinePhase()
 
-        if session.phase.canTransition(to: newPhase) {
+        // A tool finishing says nothing about whether the turn is still running,
+        // and PostToolUse can land after the Stop that ended it — a Bash with
+        // run_in_background:true reports ~1s late — or after an interrupt has
+        // already parked the session. Left alone it would legally re-transition
+        // .waitingForInput -> .processing and strand the notch on "Processing..."
+        // until the next prompt. The one phase PostToolUse may still drive is the
+        // recovery out of .waitingForApproval, which is how a permission approved
+        // in the terminal (never returning through our socket) gets reported.
+        let allowPhaseChange: Bool = {
+            if event.event == "PostToolUse" || event.event == "PostToolUseFailure" {
+                return session.phase.isWaitingForApproval
+            }
+            return true
+        }()
+
+        if allowPhaseChange, session.phase.canTransition(to: newPhase) {
             session.phase = newPhase
+        } else if !allowPhaseChange {
+            Self.logger.debug("Phase change suppressed for \(event.event, privacy: .public): keeping \(String(describing: session.phase), privacy: .public)")
         } else {
             Self.logger.debug("Invalid transition: \(String(describing: session.phase), privacy: .public) -> \(String(describing: newPhase), privacy: .public), ignoring")
         }
