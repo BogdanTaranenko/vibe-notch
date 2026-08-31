@@ -139,6 +139,29 @@ fi
 echo "DMG created: $DMG_PATH"
 echo ""
 
+# hdiutil/create-dmg emit an UNSIGNED disk image. Notarizing and stapling one
+# still works and the app inside validates, but `spctl -t open` then reports
+# "no usable signature". Sign it with the same Developer ID as the app.
+#
+# Requires the certificate in the login keychain: an Xcode-managed cert lives
+# in the data-protection keychain where codesign cannot see it, so export it
+# from Xcode (Manage Certificates -> Export Certificate) and import the .p12.
+SIGN_ID=$(security find-identity -v -p codesigning 2>/dev/null \
+    | grep "Developer ID Application" \
+    | grep "$(codesign -dvv "$APP_PATH" 2>&1 | sed -n 's/^TeamIdentifier=//p')" \
+    | head -1 | sed -E 's/.*"(.*)"/\1/')
+
+if [ -n "$SIGN_ID" ]; then
+    echo "Signing DMG as: $SIGN_ID"
+    codesign --force --sign "$SIGN_ID" --timestamp "$DMG_PATH"
+    codesign --verify --strict "$DMG_PATH" && echo "DMG signature verified."
+else
+    echo "WARNING: no Developer ID Application identity in the login keychain."
+    echo "The DMG will be notarized but left unsigned — the app inside still"
+    echo "validates, so this is cosmetic. Import your .p12 to fix it."
+fi
+echo ""
+
 # ============================================
 # Step 3: Notarize the DMG
 # ============================================
