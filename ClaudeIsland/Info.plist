@@ -19,9 +19,9 @@
 
     <!-- Sparkle Update Configuration -->
     <key>SUFeedURL</key>
-    <string>https://vibenotch.app/appcast.xml</string>
+    <string>https://raw.githubusercontent.com/BogdanTaranenko/vibe-notch/main/appcast.xml</string>
     <key>SUPublicEDKey</key>
-    <string>w5NwH5KRfE7LfeZ09J8lWx3UQrWTqUbfH4HHBa1OPRk=</string>
+    <string>hu3GWvkMIZhhkW9ylauqYsvA1n6a0wvxx0F+U90UA4s=</string>
     <key>SUEnableAutomaticChecks</key>
     <true/>
 </dict>

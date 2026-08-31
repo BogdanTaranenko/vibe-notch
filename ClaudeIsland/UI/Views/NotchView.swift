@@ -15,6 +15,14 @@ private let cornerRadiusInsets = (
     closed: (top: CGFloat(6), bottom: CGFloat(14))
 )
 
+// Hover glow drawn around the collapsed notch
+private let hoverGlow = (
+    color: Color.white,
+    lineWidth: CGFloat(1),
+    innerRadius: CGFloat(4),
+    outerRadius: CGFloat(10)
+)
+
 struct NotchView: View {
     @ObservedObject var viewModel: NotchViewModel
     @StateObject private var sessionMonitor = ClaudeSessionMonitor()
@@ -120,6 +128,16 @@ struct NotchView: View {
             : cornerRadiusInsets.closed.bottom
     }
 
+    /// Glow the border only while collapsed — once opened, the panel's own
+    /// shadow and content already make the hit area obvious.
+    ///
+    /// Keyed on `viewModel.isHovering` (global mouse monitors) rather than the
+    /// local `.onHover` state: the panel sets `ignoresMouseEvents = true` while
+    /// closed, so SwiftUI hover callbacks never fire in this state.
+    private var showsHoverGlow: Bool {
+        viewModel.status != .opened && viewModel.isHovering
+    }
+
     private var currentNotchShape: NotchShape {
         NotchShape(
             topCornerRadius: topCornerRadius,
@@ -161,6 +179,14 @@ struct NotchView: View {
                         color: (viewModel.status == .opened || isHovering) ? .black.opacity(0.7) : .clear,
                         radius: 6
                     )
+                    .overlay {
+                        currentNotchShape
+                            .stroke(hoverGlow.color, lineWidth: hoverGlow.lineWidth)
+                            .shadow(color: hoverGlow.color.opacity(0.8), radius: hoverGlow.innerRadius)
+                            .shadow(color: hoverGlow.color.opacity(0.4), radius: hoverGlow.outerRadius)
+                            .opacity(showsHoverGlow ? 1 : 0)
+                            .allowsHitTesting(false)
+                    }
                     .frame(
                         maxWidth: viewModel.status == .opened ? notchSize.width : nil,
                         maxHeight: viewModel.status == .opened ? notchSize.height : nil,
@@ -185,7 +211,8 @@ struct NotchView: View {
                     }
             }
         }
-        .opacity(isVisible ? 1 : 0)
+        .opacity(isVisible || showsHoverGlow ? 1 : 0)
+        .animation(.easeInOut(duration: 0.18), value: showsHoverGlow)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .preferredColorScheme(.dark)
         .onAppear {

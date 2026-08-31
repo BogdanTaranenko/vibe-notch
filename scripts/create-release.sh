@@ -10,11 +10,12 @@ RELEASE_DIR="$PROJECT_DIR/releases"
 KEYS_DIR="$PROJECT_DIR/.sparkle-keys"
 
 # GitHub repository (owner/repo format)
-GITHUB_REPO="farouqaldori/vibe-notch"
+GITHUB_REPO="BogdanTaranenko/vibe-notch"
 
-# Website repo for auto-updating appcast
-WEBSITE_DIR="${CLAUDE_ISLAND_WEBSITE:-$PROJECT_DIR/../ClaudeIsland-website}"
-WEBSITE_PUBLIC="$WEBSITE_DIR/public"
+# The appcast is served straight out of this repo on the default branch —
+# there is no separate website project. Must match SUFeedURL in Info.plist.
+APPCAST_BRANCH="main"
+REPO_APPCAST="$PROJECT_DIR/appcast.xml"
 
 APP_PATH="$EXPORT_PATH/Vibe Notch.app"
 APP_NAME="VibeNotch"
@@ -51,7 +52,7 @@ if ! xcrun notarytool history --keychain-profile "$KEYCHAIN_PROFILE" &>/dev/null
     echo ""
     echo "  xcrun notarytool store-credentials \"$KEYCHAIN_PROFILE\" \\"
     echo "      --apple-id \"your@email.com\" \\"
-    echo "      --team-id \"2DKS5U9LV4\" \\"
+    echo "      --team-id \"36U788QB6S\" \\"
     echo "      --password \"xxxx-xxxx-xxxx-xxxx\""
     echo ""
     echo "Create an app-specific password at: https://appleid.apple.com"
@@ -235,67 +236,44 @@ fi
 echo ""
 
 # ============================================
-# Step 6: Update website appcast and deploy
+# Step 6: Publish appcast from this repo
 # ============================================
-echo "=== Step 6: Updating Website ==="
+echo "=== Step 6: Publishing Appcast ==="
 
-if [ -d "$WEBSITE_PUBLIC" ] && [ -f "$RELEASE_DIR/appcast/appcast.xml" ]; then
-    # Copy appcast to website
-    cp "$RELEASE_DIR/appcast/appcast.xml" "$WEBSITE_PUBLIC/appcast.xml"
+if [ ! -f "$RELEASE_DIR/appcast/appcast.xml" ]; then
+    echo "Appcast was not generated — skipping publish."
+    echo "Sparkle clients will not see this release until an appcast is published."
+elif [ -z "$GITHUB_DOWNLOAD_URL" ]; then
+    echo "No GitHub download URL — skipping appcast publish."
+else
+    cp "$RELEASE_DIR/appcast/appcast.xml" "$REPO_APPCAST"
 
-    # Update the download URL in appcast to point to GitHub releases
-    if [ -n "$GITHUB_DOWNLOAD_URL" ]; then
-        sed -i '' "s|url=\"[^\"]*$APP_NAME-$VERSION.dmg\"|url=\"$GITHUB_DOWNLOAD_URL\"|g" "$WEBSITE_PUBLIC/appcast.xml"
-        echo "Updated appcast.xml with GitHub download URL"
+    # generate_appcast writes a local file:// or bare-filename URL; rewrite it
+    # to the GitHub release asset so installed clients can actually fetch it.
+    sed -i '' "s|url=\"[^\"]*$APP_NAME-$VERSION.dmg\"|url=\"$GITHUB_DOWNLOAD_URL\"|g" "$REPO_APPCAST"
+    echo "Wrote $REPO_APPCAST (download URL: $GITHUB_DOWNLOAD_URL)"
+
+    if ! grep -q "$GITHUB_DOWNLOAD_URL" "$REPO_APPCAST"; then
+        echo "ERROR: appcast.xml does not reference the release DMG."
+        echo "Inspect it before publishing — Sparkle updates would break."
+        exit 1
     fi
 
-    # Update src/config.ts with latest version and download URL (preserve other content)
-    CONFIG_FILE="$WEBSITE_DIR/src/config.ts"
-    if [ -n "$GITHUB_DOWNLOAD_URL" ]; then
-        if [ -f "$CONFIG_FILE" ]; then
-            # Update existing constants in-place
-            sed -i '' "s|export const LATEST_VERSION = .*|export const LATEST_VERSION = \"$VERSION\";|" "$CONFIG_FILE"
-            sed -i '' "s|export const DOWNLOAD_URL = .*|export const DOWNLOAD_URL = \"$GITHUB_DOWNLOAD_URL\";|" "$CONFIG_FILE"
-        else
-            # Create new config file
-            cat > "$CONFIG_FILE" << EOF
-// Auto-updated by create-release.sh
-export const LATEST_VERSION = "$VERSION";
-export const DOWNLOAD_URL = "$GITHUB_DOWNLOAD_URL";
-EOF
-        fi
-        echo "Updated src/config.ts with version $VERSION"
-    fi
-
-    # Deploy via Cloudflare Pages (manual wrangler deploy — the old GitHub
-    # repo is disabled, so git push is no longer an option).
-    cd "$WEBSITE_DIR" || exit 1
-
-    WRANGLER_PROJECT="${CLAUDE_ISLAND_WRANGLER_PROJECT:-vibenotch-website}"
-
-    read -p "Deploy website to Cloudflare Pages ($WRANGLER_PROJECT)? (Y/n) " -n 1 -r
+    read -p "Commit and push appcast.xml to $APPCAST_BRANCH? (Y/n) " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Nn]$ ]]; then
-        if ! command -v wrangler >/dev/null 2>&1; then
-            echo "ERROR: wrangler not found. Install with: npm install -g wrangler"
-            echo "Skipping website deploy. Appcast updated locally at $WEBSITE_PUBLIC/appcast.xml"
+        cd "$PROJECT_DIR"
+        git add appcast.xml
+        if git diff --cached --quiet; then
+            echo "appcast.xml unchanged — nothing to commit."
         else
-            echo "Building site..."
-            npm run build
-
-            echo "Deploying to Cloudflare Pages ($WRANGLER_PROJECT)..."
-            wrangler pages deploy dist --project-name="$WRANGLER_PROJECT"
-            echo "Website deployed!"
+            git commit -m "Publish appcast for v$VERSION"
+            git push origin "$APPCAST_BRANCH"
+            echo "Appcast pushed. Sparkle feed is live."
         fi
     else
-        echo "Skipped Cloudflare deploy."
-        echo "To deploy manually: cd $WEBSITE_DIR && npm run build && wrangler pages deploy dist --project-name=$WRANGLER_PROJECT"
+        echo "Skipped. Push $REPO_APPCAST manually to make the update visible."
     fi
-
-    cd "$PROJECT_DIR"
-else
-    echo "Website directory not found or appcast not generated"
-    echo "Skipping website update."
 fi
 
 echo ""
@@ -310,6 +288,7 @@ fi
 if [ -n "$GITHUB_DOWNLOAD_URL" ]; then
     echo "  - GitHub: https://github.com/$GITHUB_REPO/releases/tag/v$VERSION"
 fi
-if [ -f "$WEBSITE_PUBLIC/appcast.xml" ]; then
-    echo "  - Website: $WEBSITE_PUBLIC/appcast.xml"
+if [ -f "$REPO_APPCAST" ]; then
+    echo "  - Appcast (repo): $REPO_APPCAST"
+    echo "  - Feed URL: https://raw.githubusercontent.com/$GITHUB_REPO/$APPCAST_BRANCH/appcast.xml"
 fi
