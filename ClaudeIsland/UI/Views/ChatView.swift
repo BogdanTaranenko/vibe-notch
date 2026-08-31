@@ -303,8 +303,11 @@ struct ChatView: View {
                 }
                 .padding(.top, 20)
                 .padding(.bottom, 20)
+                // No animation keyed on history.count: during streaming that
+                // count changes constantly, and a spring over the whole
+                // LazyVStack re-lays out every visible message mid-flight.
+                // Per-item transitions still cover the processing indicator.
                 .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isProcessing)
-                .animation(.spring(response: 0.3, dampingFraction: 0.8), value: history.count)
             }
             .scaleEffect(x: 1, y: -1)
             .onScrollGeometryChange(for: Bool.self) { geometry in
@@ -667,9 +670,18 @@ struct ProcessingIndicatorView: View {
             ProcessingSpinner()
                 .frame(width: 6)
 
-            Text(baseText + dots)
-                .font(.system(size: 13))
-                .foregroundColor(color)
+            HStack(alignment: .center, spacing: 0) {
+                Text(baseText)
+
+                // The dots get a fixed-width slot: letting the string grow
+                // resizes this row 2.5 times a second, and the chat's
+                // LazyVStack re-places every visible message each time one of
+                // its cells changes size.
+                Text(dots)
+                    .frame(width: 14, alignment: .leading)
+            }
+            .font(.system(size: 13))
+            .foregroundColor(color)
 
             Spacer()
         }

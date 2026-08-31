@@ -5,7 +5,6 @@
 //  Minimal instances list matching Dynamic Island aesthetic
 //
 
-import Combine
 import SwiftUI
 
 struct ClaudeInstancesView: View {
@@ -51,7 +50,13 @@ struct ClaudeInstancesView: View {
             // Fall back to lastActivity if no user messages yet
             let dateA = a.lastUserMessageDate ?? a.lastActivity
             let dateB = b.lastUserMessageDate ?? b.lastActivity
-            return dateA > dateB
+            if dateA != dateB {
+                return dateA > dateB
+            }
+            // sorted(by:) is not stable, so equal dates let rows swap places
+            // between renders — the list visibly reshuffles and the LazyVStack
+            // throws away its placements. sessionId is unique and immutable.
+            return a.sessionId < b.sessionId
         }
     }
 
@@ -127,12 +132,9 @@ struct InstanceRow: View {
     let onReject: () -> Void
 
     @State private var isHovered = false
-    @State private var spinnerPhase = 0
     @State private var isYabaiAvailable = false
 
     private let claudeOrange = Color(red: 0.85, green: 0.47, blue: 0.34)
-    private let spinnerSymbols = ["·", "✢", "✳", "∗", "✻", "✽"]
-    private let spinnerTimer = Timer.publish(every: 0.15, on: .main, in: .common).autoconnect()
 
     /// Whether we're showing the approval UI
     private var isWaitingForApproval: Bool {
@@ -328,20 +330,13 @@ struct InstanceRow: View {
     @ViewBuilder
     private var stateIndicator: some View {
         switch session.phase {
+        // The spinner owns its own clock: ticking it from @State here would
+        // re-evaluate this entire row — text, buttons, hover overlays and all —
+        // several times a second for every active session.
         case .processing, .compacting:
-            Text(spinnerSymbols[spinnerPhase % spinnerSymbols.count])
-                .font(.system(size: 12, weight: .bold))
-                .foregroundColor(claudeOrange)
-                .onReceive(spinnerTimer) { _ in
-                    spinnerPhase = (spinnerPhase + 1) % spinnerSymbols.count
-                }
+            ProcessingSpinner(color: claudeOrange)
         case .waitingForApproval:
-            Text(spinnerSymbols[spinnerPhase % spinnerSymbols.count])
-                .font(.system(size: 12, weight: .bold))
-                .foregroundColor(TerminalColors.amber)
-                .onReceive(spinnerTimer) { _ in
-                    spinnerPhase = (spinnerPhase + 1) % spinnerSymbols.count
-                }
+            ProcessingSpinner(color: TerminalColors.amber)
         case .waitingForInput:
             Circle()
                 .fill(TerminalColors.green)
