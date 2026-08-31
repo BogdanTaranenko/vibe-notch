@@ -15,13 +15,18 @@ private let cornerRadiusInsets = (
     closed: (top: CGFloat(6), bottom: CGFloat(14))
 )
 
-// Hover glow drawn around the collapsed notch
+// Hover glow drawn around the collapsed notch — sides and bottom only, the top
+// edge sits flush against the screen bezel where a glow would have nowhere to go.
 private let hoverGlow = (
-    color: Color.white,
+    color: Color(red: 0.757, green: 0.373, blue: 0.235), // #c15f3c
     lineWidth: CGFloat(1),
     innerRadius: CGFloat(4),
     outerRadius: CGFloat(10)
 )
+
+// How far the glow mask reaches past the left, right and bottom edges so the
+// blurred shadow is not clipped on the three sides that keep it.
+private let hoverGlowSpread = hoverGlow.outerRadius * 3
 
 struct NotchView: View {
     @ObservedObject var viewModel: NotchViewModel
@@ -184,6 +189,16 @@ struct NotchView: View {
                             .stroke(hoverGlow.color, lineWidth: hoverGlow.lineWidth)
                             .shadow(color: hoverGlow.color.opacity(0.8), radius: hoverGlow.innerRadius)
                             .shadow(color: hoverGlow.color.opacity(0.4), radius: hoverGlow.outerRadius)
+                            .mask(alignment: .top) {
+                                // Inset past the top stroke, extended well beyond the
+                                // other three edges: everything drawn at or above the
+                                // screen edge is clipped, the sides and bottom keep
+                                // their full blur.
+                                Rectangle()
+                                    .padding(.top, hoverGlow.lineWidth)
+                                    .padding(.horizontal, -hoverGlowSpread)
+                                    .padding(.bottom, -hoverGlowSpread)
+                            }
                             .opacity(showsHoverGlow ? 1 : 0)
                             .allowsHitTesting(false)
                     }
