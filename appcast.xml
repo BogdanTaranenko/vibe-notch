@@ -3,13 +3,24 @@
     <channel>
         <title>Vibe Notch</title>
         <item>
+            <title>1.3.4</title>
+            <pubDate>Tue, 01 Sep 2026 02:18:41 +0300</pubDate>
+            <sparkle:version>8</sparkle:version>
+            <sparkle:shortVersionString>1.3.4</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.6</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/BogdanTaranenko/vibe-notch/releases/download/v1.3.4/VibeNotch-1.3.4.dmg" length="5154765" type="application/octet-stream" sparkle:edSignature="qqj44tM6FsXtXsOh2jInhavcGZOtt2JgU1PYdp1oVb702RtsHByg3MiFb9TmQPSFBw2bqzb/gfKOrhqjM3chCA=="/>
+            <sparkle:deltas>
+                <enclosure url="https://raw.githubusercontent.com/BogdanTaranenko/vibe-notch/main/Vibe%20Notch8-7.delta" sparkle:deltaFrom="7" length="372634" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="975840" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="MzYKIOGwJgcsUA7jSlCnBGHiP8Va88VkynSFhHCmFy1uSfTlB+T5BMCAz24qOy4LAe70ZVbZu27C4+gY/KaaAA=="/>
+            </sparkle:deltas>
+        </item>
+        <item>
             <title>1.3.3</title>
             <pubDate>Tue, 01 Sep 2026 00:33:54 +0300</pubDate>
             <link>https://github.com/BogdanTaranenko/vibe-notch</link>
             <sparkle:version>7</sparkle:version>
             <sparkle:shortVersionString>1.3.3</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>15.6</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/BogdanTaranenko/vibe-notch/releases/download/v1.3.3/VibeNotch-1.3.3.dmg" length="5143000" type="application/octet-stream" sparkle:edSignature="WG+sJTxYgh9ul8t9fO4euMRVXbbPwy+ANI+/An+YZ/CUN61jJFh94/hGnaoHMn97oeEvtHngFOPZEQ7S82PaAA=="/>
+            <enclosure url="https://raw.githubusercontent.com/BogdanTaranenko/vibe-notch/main/VibeNotch-1.3.3.dmg" length="5143000" type="application/octet-stream" sparkle:edSignature="WG+sJTxYgh9ul8t9fO4euMRVXbbPwy+ANI+/An+YZ/CUN61jJFh94/hGnaoHMn97oeEvtHngFOPZEQ7S82PaAA=="/>
         </item>
     </channel>
 </rss>
