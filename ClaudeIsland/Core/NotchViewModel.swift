@@ -46,6 +46,11 @@ class NotchViewModel: ObservableObject {
     @Published var contentType: NotchContentType = .instances
     @Published var isHovering: Bool = false
 
+    /// Fires when the user deliberately opens a chat — the one surface in the
+    /// notch that is typed into. The window controller takes keyboard focus on
+    /// this signal only, never merely because the panel expanded.
+    let chatFocusRequested = PassthroughSubject<Void, Never>()
+
     // MARK: - Dependencies
 
     private let screenSelector = ScreenSelector.shared
@@ -249,6 +254,11 @@ class NotchViewModel: ObservableObject {
 
         // Restore chat session if we had one open before
         if let chatSession = currentChatSession {
+            // Only a deliberate click lands the user in a chat ready to type;
+            // a hover expansion must not pull focus out of their editor.
+            if reason == .click {
+                chatFocusRequested.send()
+            }
             // Avoid unnecessary updates if already showing this chat
             if case .chat(let current) = contentType, current.sessionId == chatSession.sessionId {
                 return
@@ -281,6 +291,10 @@ class NotchViewModel: ObservableObject {
     }
 
     func showChat(for session: SessionState) {
+        // Always a direct user action (tapping a session row), so the input is
+        // worth focusing even when this chat is already on screen.
+        chatFocusRequested.send()
+
         // Avoid unnecessary updates if already showing this chat
         if case .chat(let current) = contentType, current.sessionId == session.sessionId {
             return

@@ -66,20 +66,27 @@ class NotchWindowController: NSWindowController {
         // - Opened: ignoresMouseEvents = false (buttons inside panel work)
         viewModel.$status
             .receive(on: DispatchQueue.main)
-            .sink { [weak notchWindow, weak viewModel] status in
+            .sink { [weak notchWindow] status in
                 switch status {
                 case .opened:
                     // Accept mouse events when opened so buttons work
                     notchWindow?.ignoresMouseEvents = false
-                    // Don't steal focus when opened by notification (task finished)
-                    if viewModel?.openReason != .notification {
-                        NSApp.activate(ignoringOtherApps: false)
-                        notchWindow?.makeKey()
-                    }
                 case .closed, .popping:
                     // Ignore mouse events when closed so clicks pass through
                     notchWindow?.ignoresMouseEvents = true
                 }
+            }
+            .store(in: &cancellables)
+
+        // Expanding never takes keyboard focus on its own: the panel is a
+        // non-activating NSPanel and approve/deny work through mouse events, so
+        // activating here would only yank the caret out of whatever the user is
+        // typing in. Focus is taken solely when they open a chat to reply.
+        viewModel.chatFocusRequested
+            .receive(on: DispatchQueue.main)
+            .sink { [weak notchWindow] in
+                NSApp.activate(ignoringOtherApps: false)
+                notchWindow?.makeKey()
             }
             .store(in: &cancellables)
 
