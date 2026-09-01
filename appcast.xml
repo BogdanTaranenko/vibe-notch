@@ -8,7 +8,7 @@
             <sparkle:version>9</sparkle:version>
             <sparkle:shortVersionString>1.3.5</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>15.6</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/BogdanTaranenko/vibe-notch/releases/download/v1.3.5/VibeNotch-1.3.5.dmg" length="5344635" type="application/octet-stream" sparkle:edSignature="HuhtUM1grcX8egI0a/J8GDIuAJezidSD8JkFiyFqHfQly07GuHQYXH4ZnwBfk1v2WPOzPjJNjbkMt2EAMEd7Cw=="/>
+            <enclosure url="https://github.com/BogdanTaranenko/vibe-notch/releases/download/v1.3.5/VibeNotch-1.3.5.dmg" length="5344646" type="application/octet-stream" sparkle:edSignature="DwBZ2e2aO6eu6P4ETxHBAaE97nwYIcTfCbKtK9MEQNxSCU59FID1CiQYjISX4Ya9WNhcfkwJsJagB4pcgMFrBw=="/>
             <sparkle:deltas>
                 <enclosure url="https://raw.githubusercontent.com/BogdanTaranenko/vibe-notch/main/Vibe%20Notch9-8.delta" sparkle:deltaFrom="8" length="713474" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977840" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="HHbhRVnVfVLEGVv0y2bE1k6IA8N3j7HtVf74xYmfpPe0Z+VFGz38rWCSsftPDraD1MbpKMJoo+Db+a+BA7fRDw=="/>
                 <enclosure url="https://raw.githubusercontent.com/BogdanTaranenko/vibe-notch/main/Vibe%20Notch9-7.delta" sparkle:deltaFrom="7" length="749486" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="975840" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="Gwp1fwujR0l6g1UDlEMD7jPOlkqARC6Sbb8anFEStTHi7Llj4QnAN/WoGcYjosQ6edXgKLkOyJivnyyYCxBlAA=="/>
