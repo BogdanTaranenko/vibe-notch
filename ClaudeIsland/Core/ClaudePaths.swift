@@ -62,6 +62,43 @@ enum ClaudePaths {
         claudeDir.appendingPathComponent("projects")
     }
 
+    /// Directory name Claude Code uses for a project's transcripts under
+    /// `projects/`.
+    ///
+    /// The rule is: every character that is not an ASCII letter or digit
+    /// becomes `-`, scanning **UTF-16 code units**. So `_opensource` becomes
+    /// `--opensource`, and an astral-plane character such as an emoji
+    /// contributes two dashes rather than one. Measured against Claude Code by
+    /// running it in directories containing each class of character and reading
+    /// back the directory it created; see `ProjectSlugTests`.
+    ///
+    /// Getting this wrong fails silently. Every JSONL reader in the app finds
+    /// no file and returns an empty result rather than raising, so the notch
+    /// shows no conversation, no meters and no cost, with nothing in the log to
+    /// say why. Derive the name here rather than spelling the rule out again at
+    /// a call site.
+    static func projectSlug(for cwd: String) -> String {
+        var bytes = [UInt8]()
+        bytes.reserveCapacity(cwd.utf16.count)
+        for unit in cwd.utf16 {
+            switch unit {
+            case 0x30...0x39, 0x41...0x5A, 0x61...0x7A:  // 0-9, A-Z, a-z
+                bytes.append(UInt8(truncatingIfNeeded: unit))
+            default:
+                bytes.append(UInt8(ascii: "-"))
+            }
+        }
+        return String(decoding: bytes, as: UTF8.self)
+    }
+
+    /// Absolute path of a session's JSONL transcript.
+    static func transcriptFile(sessionId: String, cwd: String) -> String {
+        projectsDir
+            .appendingPathComponent(projectSlug(for: cwd))
+            .appendingPathComponent(sessionId + ".jsonl")
+            .path
+    }
+
     /// Shell-safe absolute path for hook commands in settings.json.
     /// Absolute paths keep custom directories and ~/.config/claude working;
     /// quoting keeps paths with spaces from being split by the shell.
