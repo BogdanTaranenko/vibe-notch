@@ -116,30 +116,15 @@ if [ -f "$DMG_PATH" ]; then
     rm -f "$DMG_PATH"
 fi
 
-# Check if create-dmg is available (prettier DMG)
-if command -v create-dmg &> /dev/null; then
-    echo "Using create-dmg for prettier output..."
-    create-dmg \
-        --volname "Vibe Notch" \
-        --window-size 600 400 \
-        --icon-size 100 \
-        --icon "Vibe Notch.app" 150 200 \
-        --app-drop-link 450 200 \
-        --hide-extension "Vibe Notch.app" \
-        "$DMG_PATH" \
-        "$APP_PATH"
-else
-    echo "Using hdiutil (install create-dmg for prettier DMG: brew install create-dmg)"
-    hdiutil create -volname "Vibe Notch" \
-        -srcfolder "$APP_PATH" \
-        -ov -format UDZO \
-        "$DMG_PATH"
-fi
-
-echo "DMG created: $DMG_PATH"
+# One code path on purpose. This used to prefer create-dmg and fall back to a
+# bare `hdiutil create -srcfolder <app>` when it was missing, which is what the
+# release machine actually did: every shipped DMG held the app alone, with no
+# /Applications alias and no window layout, so the only thing to do on opening
+# it was run the app off the disk image.
+"$SCRIPT_DIR/make-dmg.sh" "$APP_PATH" "$DMG_PATH" "Vibe Notch"
 echo ""
 
-# hdiutil/create-dmg emit an UNSIGNED disk image. Notarizing and stapling one
+# hdiutil emits an UNSIGNED disk image. Notarizing and stapling one
 # still works and the app inside validates, but `spctl -t open` then reports
 # "no usable signature". Sign it with the same Developer ID as the app.
 #
