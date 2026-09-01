@@ -88,8 +88,11 @@ struct NotchMenuView: View {
                         hooksInstalled = false
                         hooksOutcome = nil
                     } else {
-                        // Tapping again retries — the usual reason this row shows
-                        // a warning is a settings.json the user has just fixed.
+                        // Tapping again retries — the usual reasons this row is
+                        // off are a settings.json the user has just fixed, or a
+                        // Claude Code they have just installed, so forget where
+                        // we last looked for the binary and search again.
+                        HookInstaller.forgetResolvedBinary()
                         hooksOutcome = HookInstaller.installIfNeeded()
                         hooksInstalled = HookInstaller.isInstalled()
                     }

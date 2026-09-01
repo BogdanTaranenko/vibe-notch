@@ -294,38 +294,215 @@ struct HookInstaller {
     }
 
     /// Runs `claude --version` and parses the result. Returns nil on any
-    /// failure (binary not found, non-zero exit, unparseable output).
+    /// failure (binary not found, non-zero exit, timeout, unparseable output),
+    /// which lands us on the baseline hook set — the safe direction to fail.
     static func detectClaudeCodeVersion() -> ClaudeCodeVersion? {
-        // Claude Code can land in a few typical spots; try each until we find one
-        let fm = FileManager.default
-        let candidates = [
-            "/usr/local/bin/claude",
-            "/opt/homebrew/bin/claude",
-            NSHomeDirectory() + "/.claude/local/claude",
-            NSHomeDirectory() + "/.local/bin/claude",
-            "/usr/bin/claude",
-        ]
-        guard let claudePath = candidates.first(where: { fm.fileExists(atPath: $0) }) else {
+        guard let claudePath = resolveClaudeBinary() else {
+            logger.info("Could not locate the claude binary — registering baseline hooks only")
             return nil
         }
 
+        guard let output = runCapturingOutput(
+            executable: claudePath,
+            arguments: ["--version"],
+            timeout: 10
+        ) else {
+            return nil
+        }
+
+        let version = parseClaudeCodeVersion(from: output)
+        if let version {
+            logger.info("Detected Claude Code \(version.major).\(version.minor).\(version.patch) at \(claudePath, privacy: .public)")
+        }
+        return version
+    }
+
+    // MARK: - Locating the claude Binary
+
+    private static let resolvedBinaryKey = "claudeBinaryPath"
+    private static let failedProbeKey = "claudeBinaryProbeFailedAt"
+
+    /// How long to leave the login shell alone after it fails to find `claude`.
+    /// Probing costs a shell startup on the launch path, and the answer does not
+    /// usually change between two launches a minute apart.
+    private static let failedProbeCooldown: TimeInterval = 24 * 60 * 60
+
+    /// Drop everything we remember about where `claude` lives, so the next
+    /// resolution starts from scratch. The Hooks toggle calls this, which makes
+    /// flipping it off and on a genuine retry after installing Claude Code.
+    static func forgetResolvedBinary() {
+        UserDefaults.standard.removeObject(forKey: resolvedBinaryKey)
+        UserDefaults.standard.removeObject(forKey: failedProbeKey)
+    }
+
+    /// Well-known install locations, cheap to stat and checked before we pay for
+    /// a shell. Deliberately does not cover version managers — nvm, fnm, volta,
+    /// mise and bun all put `claude` on a path that only the user's shell knows.
+    private static var fixedCandidates: [String] {
+        let home = NSHomeDirectory()
+        return [
+            "/usr/local/bin/claude",
+            "/opt/homebrew/bin/claude",
+            // The local install lives under the Claude config dir, wherever the
+            // user has actually put it — never assume ~/.claude.
+            ClaudePaths.claudeDir.appendingPathComponent("local/claude").path,
+            home + "/.local/bin/claude",
+            home + "/.bun/bin/claude",
+            "/opt/local/bin/claude",
+            "/usr/bin/claude",
+        ]
+    }
+
+    /// Find the `claude` executable: remembered path, then well-known
+    /// locations, then the user's own login shell.
+    static func resolveClaudeBinary() -> String? {
+        let fm = FileManager.default
+
+        // A path we resolved on an earlier launch. Costs one stat, and saves the
+        // shell round-trip for everyone whose install has not moved.
+        if let remembered = UserDefaults.standard.string(forKey: resolvedBinaryKey),
+           fm.isExecutableFile(atPath: remembered) {
+            return remembered
+        }
+
+        if let known = fixedCandidates.first(where: { fm.isExecutableFile(atPath: $0) }) {
+            UserDefaults.standard.set(known, forKey: resolvedBinaryKey)
+            return known
+        }
+
+        UserDefaults.standard.removeObject(forKey: resolvedBinaryKey)
+
+        // Nothing in the usual places. The remaining installs — an npm global
+        // under a version manager, most commonly — are only on the PATH that the
+        // user's shell builds, and a GUI app inherits none of it. Ask the shell.
+        guard let resolved = resolveClaudeViaLoginShellIfAllowed() else {
+            return nil
+        }
+
+        UserDefaults.standard.set(resolved, forKey: resolvedBinaryKey)
+        return resolved
+    }
+
+    /// The login-shell probe behind its cooldown.
+    ///
+    /// This runs on the launch path, and someone's login shell can be slow or
+    /// hang outright, so one failure buys quiet until the cooldown expires
+    /// rather than costing every subsequent launch the same stall. The Hooks
+    /// toggle clears it via `forgetResolvedBinary()`.
+    static func resolveClaudeViaLoginShellIfAllowed() -> String? {
+        if let lastFailure = UserDefaults.standard.object(forKey: failedProbeKey) as? Date,
+           Date().timeIntervalSince(lastFailure) < failedProbeCooldown {
+            logger.debug("Skipping shell probe — the last one failed recently")
+            return nil
+        }
+
+        guard let resolved = resolveClaudeViaLoginShell() else {
+            UserDefaults.standard.set(Date(), forKey: failedProbeKey)
+            return nil
+        }
+
+        UserDefaults.standard.removeObject(forKey: failedProbeKey)
+        return resolved
+    }
+
+    /// Internal rather than private so it can be exercised against a stub shell —
+    /// launching someone else's login shell is the riskiest thing in this file.
+    static func resolveClaudeViaLoginShell() -> String? {
+        let shell = Foundation.ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
+        guard FileManager.default.isExecutableFile(atPath: shell) else { return nil }
+
+        // -i as well as -l: zsh reads nvm/fnm/mise setup from .zshrc, which a
+        // non-interactive login shell skips entirely. Interactive shells can
+        // print banners and prompts, hence the defensive parse below, and can
+        // hang outright, hence the timeout.
+        guard let output = runCapturingOutput(
+            executable: shell,
+            arguments: ["-i", "-l", "-c", "command -v claude"],
+            timeout: 5
+        ) else {
+            return nil
+        }
+
+        let path = parseShellResolvedPath(from: output)
+        if let path {
+            logger.info("Resolved claude via \(shell, privacy: .public): \(path, privacy: .public)")
+        }
+        return path
+    }
+
+    /// Pull an executable path out of `command -v` output.
+    ///
+    /// An interactive shell may emit banners, prompt escapes or motd noise
+    /// alongside the answer, and `command -v` returns a bare name for a shell
+    /// function or alias. So: take the last line that is an absolute path we can
+    /// actually execute, and ignore everything else.
+    static func parseShellResolvedPath(
+        from output: String,
+        isExecutable: (String) -> Bool = { FileManager.default.isExecutableFile(atPath: $0) }
+    ) -> String? {
+        output
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .last { $0.hasPrefix("/") && isExecutable($0) }
+    }
+
+    /// Run a command and return stdout, or nil if it fails or outlives
+    /// `timeout`. HookInstaller runs before the async machinery is up and on the
+    /// launch path, so nothing here may block indefinitely.
+    private static func runCapturingOutput(
+        executable: String,
+        arguments: [String],
+        timeout: TimeInterval
+    ) -> String? {
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: claudePath)
-        process.arguments = ["--version"]
+        process.executableURL = URL(fileURLWithPath: executable)
+        process.arguments = arguments
+
         let pipe = Pipe()
         process.standardOutput = pipe
         process.standardError = FileHandle.nullDevice
+        // An interactive shell that finds a terminal on stdin may wait for input.
+        process.standardInput = FileHandle.nullDevice
 
         do {
             try process.run()
-            process.waitUntilExit()
-            guard process.terminationStatus == 0 else { return nil }
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            guard let output = String(data: data, encoding: .utf8) else { return nil }
-            return parseClaudeCodeVersion(from: output)
         } catch {
+            logger.debug("Failed to launch \(executable, privacy: .public): \(error.localizedDescription, privacy: .public)")
             return nil
         }
+
+        // Read on a background queue: a child that fills the pipe buffer blocks
+        // until it is drained, so waiting for exit first can deadlock.
+        var output = Data()
+        let reader = DispatchQueue(label: "com.claudeisland.hookinstaller.read")
+        let finishedReading = DispatchSemaphore(value: 0)
+        reader.async {
+            output = pipe.fileHandleForReading.readDataToEndOfFile()
+            finishedReading.signal()
+        }
+
+        let deadline = DispatchTime.now() + timeout
+        let exited = DispatchSemaphore(value: 0)
+        DispatchQueue.global().async {
+            process.waitUntilExit()
+            exited.signal()
+        }
+
+        if exited.wait(timeout: deadline) == .timedOut {
+            logger.warning("\(executable, privacy: .public) exceeded \(Int(timeout))s — terminating")
+            process.terminate()
+            _ = exited.wait(timeout: .now() + 2)
+            if process.isRunning {
+                kill(process.processIdentifier, SIGKILL)
+            }
+            _ = finishedReading.wait(timeout: .now() + 2)
+            return nil
+        }
+
+        _ = finishedReading.wait(timeout: .now() + 2)
+
+        guard process.terminationStatus == 0 else { return nil }
+        return String(data: output, encoding: .utf8)
     }
 
     /// Extracts the first `X.Y.Z` token from arbitrary version output.
