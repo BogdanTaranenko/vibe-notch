@@ -6,11 +6,29 @@
 //
 
 import Foundation
+import os.log
+
+private let logger = Logger(subsystem: "com.claudeisland", category: "Hooks")
+
+/// Result of an install attempt. `settingsUnreadable` is the one the settings
+/// panel surfaces: it means the user's settings.json is in a state we refuse to
+/// overwrite, so hooks are *not* installed until they fix it.
+enum HookInstallOutcome: Equatable, Sendable {
+    /// settings.json was rewritten with our hook entries.
+    case installed
+    /// settings.json already held exactly the entries we wanted; nothing written.
+    case alreadyCurrent
+    /// settings.json exists but could not be read as a JSON object. Left untouched.
+    case settingsUnreadable
+    /// The write itself failed. settings.json is unchanged (the write is atomic).
+    case writeFailed(String)
+}
 
 struct HookInstaller {
 
     /// Install hook script and update settings.json on app launch
-    static func installIfNeeded() {
+    @discardableResult
+    static func installIfNeeded() -> HookInstallOutcome {
         let hooksDir = ClaudePaths.hooksDir
         let pythonScript = hooksDir.appendingPathComponent("claude-island-state.py")
 
@@ -28,18 +46,90 @@ struct HookInstaller {
             )
         }
 
-        updateSettings(at: ClaudePaths.settingsFile)
+        let outcome = updateSettings(at: ClaudePaths.settingsFile)
+        setLastOutcome(outcome)
+        return outcome
     }
 
-    private static func updateSettings(at settingsURL: URL) {
-        var json: [String: Any] = [:]
-        if let data = try? Data(contentsOf: settingsURL),
-           let existing = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-            json = existing
+    // MARK: - settings.json Rewrite
+
+    /// What `updateSettings` decided to do, given the bytes currently on disk.
+    /// Kept separate from the file IO so it can be exercised without a real
+    /// ~/.claude — rewriting settings.json is the one thing this app does that
+    /// can destroy something the user cannot get back.
+    enum SettingsPlan: Equatable {
+        case write(Data)
+        case alreadyCurrent
+        case refuse
+    }
+
+    private static func updateSettings(at settingsURL: URL) -> HookInstallOutcome {
+        let fm = FileManager.default
+        let exists = fm.fileExists(atPath: settingsURL.path)
+        let existingData: Data? = exists ? try? Data(contentsOf: settingsURL) : nil
+
+        // Present but unreadable (permissions, or a read that raced a save in
+        // progress). Refuse for the same reason a parse failure refuses: we have
+        // no idea what we would be replacing.
+        if exists && existingData == nil {
+            logger.error("settings.json exists but could not be read — leaving it alone")
+            return .settingsUnreadable
         }
 
-        let python = detectPython()
-        let command = "\(python) \(ClaudePaths.hookScriptShellPath)"
+        let plan = planSettingsUpdate(
+            existingData: existingData,
+            command: "\(detectPython()) \(ClaudePaths.hookScriptShellPath)",
+            version: detectClaudeCodeVersion()
+        )
+
+        switch plan {
+        case .refuse:
+            logger.error("settings.json is not a JSON object — refusing to overwrite it")
+            return .settingsUnreadable
+
+        case .alreadyCurrent:
+            logger.debug("settings.json already current — no write")
+            return .alreadyCurrent
+
+        case .write(let data):
+            if let existingData {
+                backUpSettings(existingData, at: settingsURL)
+            }
+            do {
+                try data.write(to: settingsURL, options: .atomic)
+                logger.info("Installed hooks into settings.json")
+                return .installed
+            } catch {
+                logger.error("Failed to write settings.json: \(error.localizedDescription, privacy: .public)")
+                return .writeFailed(error.localizedDescription)
+            }
+        }
+    }
+
+    /// Build the settings.json we want, or refuse.
+    ///
+    /// - Parameter existingData: current file contents, or nil when the file
+    ///   does not exist yet (the only case where starting from `{}` is correct).
+    static func planSettingsUpdate(
+        existingData: Data?,
+        command: String,
+        version: ClaudeCodeVersion?
+    ) -> SettingsPlan {
+        var json: [String: Any] = [:]
+
+        if let existingData, !isBlank(existingData) {
+            // A half-written save caught mid-flight, a top-level array, binary
+            // garbage — anything we can't read back as an object. (Trailing
+            // commas are fine; JSONSerialization tolerates them.) Defaulting to
+            // an empty dictionary here would write our hooks over the user's
+            // permissions, model, env, statusLine and MCP config with no warning
+            // and no way back, so we write nothing at all instead.
+            guard let parsed = try? JSONSerialization.jsonObject(with: existingData) as? [String: Any] else {
+                return .refuse
+            }
+            json = parsed
+        }
+
         let hookEntry: [[String: Any]] = [["type": "command", "command": command]]
         let hookEntryWithTimeout: [[String: Any]] = [["type": "command", "command": command, "timeout": 86400]]
         let withMatcher: [[String: Any]] = [["matcher": "*", "hooks": hookEntry]]
@@ -72,9 +162,8 @@ struct HookInstaller {
         // Register only hooks the installed Claude Code version supports.
         // When detection fails, fall back to the baseline set that every
         // Claude Code version has supported (no new v1.3+ hooks).
-        let installedVersion = detectClaudeCodeVersion()
         let hookEvents = supportedHookEvents(
-            for: installedVersion,
+            for: version,
             withMatcher: withMatcher,
             withMatcherAndTimeout: withMatcherAndTimeout,
             withoutMatcher: withoutMatcher,
@@ -88,11 +177,104 @@ struct HookInstaller {
 
         json["hooks"] = hooks
 
-        if let data = try? JSONSerialization.data(
+        guard let newData = try? JSONSerialization.data(
             withJSONObject: json,
             options: [.prettyPrinted, .sortedKeys]
-        ) {
-            try? data.write(to: settingsURL)
+        ) else {
+            return .refuse
+        }
+
+        // installIfNeeded() runs on every launch. Once we are the last writer the
+        // file is already in this exact canonical form, so the common case is to
+        // touch nothing — which also keeps the risk window as small as possible.
+        if newData == existingData {
+            return .alreadyCurrent
+        }
+
+        return .write(newData)
+    }
+
+    /// True for an empty or whitespace-only file, which is safe to treat as `{}`.
+    /// Bytes that aren't valid UTF-8 are not blank — they fall through to the
+    /// parse, and the parse refuses.
+    private static func isBlank(_ data: Data) -> Bool {
+        guard let text = String(data: data, encoding: .utf8) else { return false }
+        return text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    // MARK: - Backups
+
+    private static let backupPrefix = "settings.json.vibenotch-"
+    private static let backupSuffix = ".bak"
+
+    /// How many of our own backups to keep beside settings.json.
+    private static let maxBackups = 5
+
+    private static let backupTimestampFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        return formatter
+    }()
+
+    private static let stateLock = NSLock()
+    nonisolated(unsafe) private static var hasBackedUpThisRun = false
+    nonisolated(unsafe) private static var _lastOutcome: HookInstallOutcome?
+
+    /// Result of the most recent install attempt, for the settings panel.
+    static var lastOutcome: HookInstallOutcome? {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return _lastOutcome
+    }
+
+    private static func setLastOutcome(_ outcome: HookInstallOutcome) {
+        stateLock.lock()
+        _lastOutcome = outcome
+        stateLock.unlock()
+    }
+
+    /// Copy settings.json aside before the first write of each app run. Written
+    /// from the bytes we already read rather than re-reading the file, so the
+    /// backup is exactly what the write is about to replace.
+    private static func backUpSettings(_ data: Data, at settingsURL: URL) {
+        stateLock.lock()
+        let alreadyBackedUp = hasBackedUpThisRun
+        hasBackedUpThisRun = true
+        stateLock.unlock()
+        guard !alreadyBackedUp else { return }
+
+        let directory = settingsURL.deletingLastPathComponent()
+        let name = backupPrefix + backupTimestampFormatter.string(from: Date()) + backupSuffix
+        let backupURL = directory.appendingPathComponent(name)
+
+        do {
+            try data.write(to: backupURL, options: .atomic)
+            logger.info("Backed up settings.json to \(name, privacy: .public)")
+        } catch {
+            logger.error("Failed to back up settings.json: \(error.localizedDescription, privacy: .public)")
+            return
+        }
+
+        pruneBackups(in: directory)
+    }
+
+    /// Trim our own backups to the newest `maxBackups`. Only ever removes files
+    /// matching both our prefix and suffix — nothing else in the Claude
+    /// directory is a candidate. The timestamp format sorts lexicographically.
+    private static func pruneBackups(in directory: URL) {
+        guard let names = try? FileManager.default.contentsOfDirectory(atPath: directory.path) else {
+            return
+        }
+
+        let ours = names
+            .filter { $0.hasPrefix(backupPrefix) && $0.hasSuffix(backupSuffix) }
+            .sorted()
+
+        guard ours.count > maxBackups else { return }
+
+        for name in ours.dropLast(maxBackups) {
+            try? FileManager.default.removeItem(at: directory.appendingPathComponent(name))
         }
     }
 
@@ -250,8 +432,8 @@ struct HookInstaller {
 
         try? FileManager.default.removeItem(at: pythonScript)
 
-        guard let data = try? Data(contentsOf: settings),
-              var json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+        guard let originalData = try? Data(contentsOf: settings),
+              var json = try? JSONSerialization.jsonObject(with: originalData) as? [String: Any],
               var hooks = json["hooks"] as? [String: Any] else {
             return
         }
@@ -278,7 +460,8 @@ struct HookInstaller {
             withJSONObject: json,
             options: [.prettyPrinted, .sortedKeys]
         ) {
-            try? data.write(to: settings)
+            backUpSettings(originalData, at: settings)
+            try? data.write(to: settings, options: .atomic)
         }
     }
 
