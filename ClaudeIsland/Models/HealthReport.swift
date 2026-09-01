@@ -32,6 +32,20 @@ nonisolated enum HealthStatus: Sendable, Equatable {
 }
 
 /// One link, its verdict, the evidence behind it, and what to do about it.
+/// Something the panel can do about a problem, beyond telling the user where
+/// to click. Named rather than closured so the judgement of *which* remedy fits
+/// stays in this file, pure and tested, while the side effect lives in the UI.
+nonisolated enum HealthAction: String, Sendable, Equatable {
+    /// Clear this bundle id's TCC rows and ask again from scratch.
+    case resetAccessibilityGrant
+
+    var label: String {
+        switch self {
+        case .resetAccessibilityGrant: return "Reset and ask again"
+        }
+    }
+}
+
 nonisolated struct HealthCheck: Identifiable, Sendable, Equatable {
 
     /// The chain, in the order state actually travels it: Claude Code writes to
@@ -55,6 +69,17 @@ nonisolated struct HealthCheck: Identifiable, Sendable, Equatable {
     /// What the user can do. Always present on a real problem, always nil when
     /// the link is fine.
     let remedy: String?
+    /// An action the panel can offer alongside the remedy, when telling the user
+    /// where to click is not enough on its own.
+    let action: HealthAction?
+
+    init(link: Link, status: HealthStatus, detail: String, remedy: String?, action: HealthAction? = nil) {
+        self.link = link
+        self.status = status
+        self.detail = detail
+        self.remedy = remedy
+        self.action = action
+    }
 
     var id: String { link.rawValue }
 
@@ -365,11 +390,24 @@ extension HealthReport {
         guard facts.accessibilityGranted else {
             // Hover and click detection are global NSEvent monitors, so without
             // this the notch renders and cannot be opened.
+            //
+            // The remedy names the case that looks like a contradiction, because
+            // it is the one a user cannot solve by following the obvious advice.
+            // macOS stores an Accessibility grant against the bundle id *and* the
+            // signature that first claimed it. This app inherits its bundle id
+            // from the project it forks, so on any Mac that ran the original the
+            // stored grant demands a signature this build cannot present. The row
+            // shows as enabled, every request is refused, and nothing in System
+            // Settings says why. Sending that user to toggle a switch that is
+            // already on is the panel failing at its one job.
             return HealthCheck(
                 link: .accessibility,
                 status: .failing,
                 detail: "Not granted — the notch cannot see hover or clicks",
-                remedy: "Allow Vibe Notch in System Settings → Privacy & Security → Accessibility."
+                remedy: "Add Vibe Notch in System Settings → Privacy & Security → Accessibility, "
+                      + "then relaunch. If it is already listed and switched on, the entry belongs "
+                      + "to a differently-signed build and can never match this one — reset it and add it again.",
+                action: .resetAccessibilityGrant
             )
         }
 

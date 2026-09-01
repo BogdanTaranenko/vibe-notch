@@ -227,6 +227,37 @@ struct HealthCheckTests {
         #expect(socket.detail.contains("/tmp/claude-island.sock"))
     }
 
+    /// The panel's whole value is that it explains a symptom the user cannot
+    /// otherwise account for. Sending someone to switch on a switch that is
+    /// already on is worse than saying nothing, so the remedy has to name the
+    /// case where the grant exists and still does not apply.
+    @Test func missingAccessibilityExplainsAnEntryThatLooksEnabled() {
+        var facts = healthyFacts()
+        facts.accessibilityGranted = false
+        let accessibility = check(.accessibility, in: HealthReport.make(from: facts, now: now))
+
+        let remedy = try! #require(accessibility.remedy)
+        #expect(remedy.contains("already listed"))
+        #expect(remedy.contains("differently-signed"))
+        #expect(accessibility.action == .resetAccessibilityGrant)
+    }
+
+    @Test func grantedAccessibilityOffersNoAction() {
+        let accessibility = check(.accessibility, in: HealthReport.make(from: healthyFacts(), now: now))
+        #expect(accessibility.status == .ok)
+        #expect(accessibility.action == nil)
+        #expect(accessibility.remedy == nil)
+    }
+
+    /// An action is an offer to change something on the user's machine, so it
+    /// belongs only where there is a problem to justify it.
+    @Test func noHealthyCheckCarriesAnAction() {
+        let report = HealthReport.make(from: healthyFacts(), now: now)
+        for check in report.checks where check.status == .ok {
+            #expect(check.action == nil, "\(check.link) offers an action while reporting ok")
+        }
+    }
+
     @Test func missingAccessibilityFails() {
         var facts = healthyFacts()
         facts.accessibilityGranted = false

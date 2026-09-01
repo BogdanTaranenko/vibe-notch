@@ -80,8 +80,7 @@ actor ConversationParser {
     /// Parse a JSONL file to extract conversation info
     /// Uses caching based on file modification time
     func parse(sessionId: String, cwd: String) -> ConversationInfo {
-        let projectDir = cwd.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ".", with: "-")
-        let sessionFile = ClaudePaths.projectsDir.path + "/" + projectDir + "/" + sessionId + ".jsonl"
+        let sessionFile = ClaudePaths.transcriptFile(sessionId: sessionId, cwd: cwd)
 
         let fileManager = FileManager.default
         guard fileManager.fileExists(atPath: sessionFile),
@@ -487,8 +486,7 @@ actor ConversationParser {
 
     /// Build session file path
     private static func sessionFilePath(sessionId: String, cwd: String) -> String {
-        let projectDir = cwd.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ".", with: "-")
-        return ClaudePaths.projectsDir.path + "/" + projectDir + "/" + sessionId + ".jsonl"
+        return ClaudePaths.transcriptFile(sessionId: sessionId, cwd: cwd)
     }
 
     /// Build subagent JSONL file path.
@@ -942,7 +940,7 @@ actor ConversationParser {
     func parseSubagentTools(sessionId: String, agentId: String, cwd: String) -> [SubagentToolInfo] {
         guard !agentId.isEmpty else { return [] }
 
-        let projectDir = cwd.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ".", with: "-")
+        let projectDir = ClaudePaths.projectSlug(for: cwd)
         let agentFile = Self.subagentFilePath(sessionId: sessionId, agentId: agentId, projectDir: projectDir)
 
         guard FileManager.default.fileExists(atPath: agentFile),
@@ -1034,7 +1032,7 @@ extension ConversationParser {
     nonisolated static func parseSubagentToolsSync(sessionId: String, agentId: String, cwd: String) -> [SubagentToolInfo] {
         guard !agentId.isEmpty else { return [] }
 
-        let projectDir = cwd.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ".", with: "-")
+        let projectDir = ClaudePaths.projectSlug(for: cwd)
         let agentFile = subagentFilePath(sessionId: sessionId, agentId: agentId, projectDir: projectDir)
 
         guard FileManager.default.fileExists(atPath: agentFile),
