@@ -106,8 +106,14 @@ struct ClaudeBinaryResolutionTests {
 
     @Test("A shell that cannot find claude yields nil")
     func shellWithoutClaude() throws {
-        let shell = try stubShell("exit 1")
+        let marker = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("vibe-notch-ran-\(UUID().uuidString)")
+        let shell = try stubShell("touch '\(marker.path)'\nexit 1")
         #expect(HookInstaller.resolveClaudeViaLoginShell(shell: shell) == nil)
+        // The marker is what makes this test mean anything: asserting nil alone
+        // passes just as well when the probe never ran the shell at all, which
+        // is exactly how a CI-only regression hid here.
+        #expect(FileManager.default.fileExists(atPath: marker.path))
     }
 
     @Test("A shell that floods stdout still resolves and does not deadlock")
@@ -130,9 +136,15 @@ struct ClaudeBinaryResolutionTests {
         let shell = try stubShell("sleep 120")
         let start = Date()
         #expect(HookInstaller.resolveClaudeViaLoginShell(shell: shell) == nil)
+        let elapsed = Date().timeIntervalSince(start)
         // The probe runs during applicationDidFinishLaunching, so an unbounded
         // wait would be a beachball on every launch.
-        #expect(Date().timeIntervalSince(start) < 30)
+        #expect(elapsed < 30)
+        // And a lower bound, for the same reason as the marker above: returning
+        // nil immediately -- because the shell never launched -- would satisfy
+        // the upper bound perfectly. This shell cannot exit on its own, so
+        // anything near the 5s ceiling proves the timeout is what ended it.
+        #expect(elapsed >= 4)
     }
 
     @Test("A shell path that is not executable is not launched")

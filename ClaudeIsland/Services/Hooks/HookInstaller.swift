@@ -499,6 +499,15 @@ struct HookInstaller {
         // An interactive shell that finds a terminal on stdin may wait for input.
         process.standardInput = FileHandle.nullDevice
 
+        // Exit arrives by callback rather than by waiting on it. Blocking a
+        // global-queue thread on waitUntilExit() made `timeout` measure
+        // scheduling delay as well as run time: on a busy machine the block
+        // could sit unscheduled for seconds, and a child that had already
+        // exited was reported as a timeout. Measured on a 3-core CI runner, a
+        // stub that runs in 0.09s took 4.74s to come back through here.
+        let exited = DispatchSemaphore(value: 0)
+        process.terminationHandler = { _ in exited.signal() }
+
         do {
             try process.run()
         } catch {
@@ -506,29 +515,29 @@ struct HookInstaller {
             return nil
         }
 
-        // Read on a background queue: a child that fills the pipe buffer blocks
-        // until it is drained, so waiting for exit first can deadlock.
-        var output = Data()
-        let reader = DispatchQueue(label: "com.claudeisland.hookinstaller.read")
+        // Drain as data arrives, for the same two reasons: a child that fills
+        // the pipe buffer blocks until someone reads it, so this cannot wait
+        // for exit first -- and it must not hold a thread of its own either.
+        let collected = OutputCollector()
         let finishedReading = DispatchSemaphore(value: 0)
-        reader.async {
-            output = pipe.fileHandleForReading.readDataToEndOfFile()
-            finishedReading.signal()
+        let handle = pipe.fileHandleForReading
+        handle.readabilityHandler = { fileHandle in
+            let chunk = fileHandle.availableData
+            if chunk.isEmpty {
+                fileHandle.readabilityHandler = nil
+                finishedReading.signal()
+            } else {
+                collected.append(chunk)
+            }
         }
+        defer { handle.readabilityHandler = nil }
 
-        let deadline = DispatchTime.now() + timeout
-        let exited = DispatchSemaphore(value: 0)
-        DispatchQueue.global().async {
-            process.waitUntilExit()
-            exited.signal()
-        }
-
-        if exited.wait(timeout: deadline) == .timedOut {
+        if exited.wait(timeout: .now() + timeout) == .timedOut {
             logger.warning("\(executable, privacy: .public) exceeded \(Int(timeout))s — terminating")
             process.terminate()
-            _ = exited.wait(timeout: .now() + 2)
-            if process.isRunning {
+            if exited.wait(timeout: .now() + 2) == .timedOut, process.isRunning {
                 kill(process.processIdentifier, SIGKILL)
+                _ = exited.wait(timeout: .now() + 2)
             }
             _ = finishedReading.wait(timeout: .now() + 2)
             return nil
@@ -537,7 +546,26 @@ struct HookInstaller {
         _ = finishedReading.wait(timeout: .now() + 2)
 
         guard process.terminationStatus == 0 else { return nil }
-        return String(data: output, encoding: .utf8)
+        return String(data: collected.data, encoding: .utf8)
+    }
+
+    /// Accumulates a child's stdout, which arrives on the pipe's own callback
+    /// queue rather than on the caller's thread.
+    private final class OutputCollector: @unchecked Sendable {
+        private let lock = NSLock()
+        private var buffer = Data()
+
+        func append(_ chunk: Data) {
+            lock.lock()
+            defer { lock.unlock() }
+            buffer.append(chunk)
+        }
+
+        var data: Data {
+            lock.lock()
+            defer { lock.unlock() }
+            return buffer
+        }
     }
 
     /// Extracts the first `X.Y.Z` token from arbitrary version output.
