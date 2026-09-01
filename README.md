@@ -98,6 +98,8 @@ xcodebuild -scheme ClaudeIsland -configuration Debug build
 xcodebuild test -scheme ClaudeIsland -destination 'platform=macOS'
 ```
 
+Releases are cut by pushing a `v*` tag; see [RELEASING.md](RELEASING.md).
+
 The test bundle runs without launching the app, so a test run never rewrites your
 own Claude configuration. Coverage sits where a mistake would be silent or hard to
 undo: the `settings.json` rewrite, locating the `claude` binary, the session phase

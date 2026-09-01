@@ -21,6 +21,22 @@ APP_PATH="$EXPORT_PATH/Vibe Notch.app"
 APP_NAME="VibeNotch"
 KEYCHAIN_PROFILE="ClaudeIsland"
 
+# How to authenticate to notarytool. A developer's Mac has a stored keychain
+# profile; CI has an App Store Connect API key and passes --key/--key-id/--issuer
+# instead. Both end up as the same argument list, so the submit calls below do
+# not care which is in use.
+if [ -n "$NOTARY_ARGS" ]; then
+    # shellcheck disable=SC2206  # deliberate word splitting: this is an arg list
+    NOTARY_AUTH=($NOTARY_ARGS)
+else
+    NOTARY_AUTH=(--keychain-profile "$KEYCHAIN_PROFILE")
+fi
+
+# Publishing the appcast asks for confirmation when a human is driving. CI has
+# nobody to ask, and a release that stops at an unanswered prompt has already
+# uploaded the DMG — leaving the feed behind the release it describes.
+ASSUME_YES="${ASSUME_YES:-${CI:-false}}"
+
 echo "=== Creating Release ==="
 echo ""
 
@@ -64,9 +80,15 @@ mkdir -p "$RELEASE_DIR"
 # ============================================
 echo "=== Step 1: Notarizing ==="
 
-# Check if keychain profile exists
-if ! xcrun notarytool history --keychain-profile "$KEYCHAIN_PROFILE" &>/dev/null; then
+# Check the notarization credentials actually work before building anything on
+# top of them.
+if ! xcrun notarytool history "${NOTARY_AUTH[@]}" &>/dev/null; then
     echo ""
+    if [ -n "$NOTARY_ARGS" ]; then
+        echo "notarytool rejected the credentials in NOTARY_ARGS."
+        echo "Check the App Store Connect key, key ID and issuer. See RELEASING.md."
+        exit 1
+    fi
     echo "No keychain profile found. Set up credentials with:"
     echo ""
     echo "  xcrun notarytool store-credentials \"$KEYCHAIN_PROFILE\" \\"
@@ -76,6 +98,14 @@ if ! xcrun notarytool history --keychain-profile "$KEYCHAIN_PROFILE" &>/dev/null
     echo ""
     echo "Create an app-specific password at: https://appleid.apple.com"
     echo ""
+
+    # An unattended run has nobody to ask, and shipping an un-notarized build
+    # is never the right answer to a missing credential.
+    if [ "$ASSUME_YES" = "true" ]; then
+        echo "Refusing to skip notarization in an unattended run."
+        exit 1
+    fi
+
     read -p "Skip notarization for now? (y/N) " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -91,7 +121,7 @@ else
 
     echo "Submitting for notarization..."
     xcrun notarytool submit "$ZIP_PATH" \
-        --keychain-profile "$KEYCHAIN_PROFILE" \
+        "${NOTARY_AUTH[@]}" \
         --wait
 
     echo "Stapling notarization ticket..."
@@ -154,7 +184,7 @@ if [ -z "$SKIP_NOTARIZATION" ]; then
     echo "=== Step 3: Notarizing DMG ==="
 
     xcrun notarytool submit "$DMG_PATH" \
-        --keychain-profile "$KEYCHAIN_PROFILE" \
+        "${NOTARY_AUTH[@]}" \
         --wait
 
     xcrun stapler staple "$DMG_PATH"
@@ -171,7 +201,11 @@ echo "=== Step 4: Signing for Sparkle ==="
 SPARKLE_SIGN=""
 GENERATE_APPCAST=""
 
+# SPARKLE_BIN_DIR lets a caller that already knows where the artifacts landed
+# say so — a CI runner builds into its own derived data path, which this glob
+# would not find.
 POSSIBLE_PATHS=(
+    "$SPARKLE_BIN_DIR"
     "$HOME/Library/Developer/Xcode/DerivedData/ClaudeIsland-*/SourcePackages/artifacts/sparkle/Sparkle/bin"
 )
 
@@ -327,8 +361,13 @@ else
         exit 1
     fi
 
-    read -p "Commit and push appcast.xml to $APPCAST_BRANCH? (Y/n) " -n 1 -r
-    echo
+    if [ "$ASSUME_YES" = "true" ]; then
+        REPLY="y"
+        echo "Publishing appcast to $APPCAST_BRANCH (ASSUME_YES)."
+    else
+        read -p "Commit and push appcast.xml to $APPCAST_BRANCH? (Y/n) " -n 1 -r
+        echo
+    fi
     if [[ ! $REPLY =~ ^[Nn]$ ]]; then
         cd "$PROJECT_DIR"
         git add appcast.xml
@@ -336,7 +375,11 @@ else
             echo "appcast.xml unchanged — nothing to commit."
         else
             git commit -m "Publish appcast for v$VERSION"
-            git push origin "$APPCAST_BRANCH"
+            # HEAD:refs/heads/<branch> rather than a plain branch push: a tag
+            # build checks out a detached HEAD, which has no branch to name.
+            # Either way this only fast-forwards, so a branch that moved since
+            # the tag was cut fails loudly instead of clobbering the feed.
+            git push origin HEAD:"refs/heads/$APPCAST_BRANCH"
             echo "Appcast pushed. Sparkle feed is live."
         fi
     else

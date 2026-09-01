@@ -24,6 +24,10 @@ Pods/
 .LSOverride
 ._*
 
+# Python bytecode (scripts/*.py)
+__pycache__/
+*.pyc
+
 # Temporary files
 *.swp
 *.swo

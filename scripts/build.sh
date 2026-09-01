@@ -8,7 +8,30 @@ BUILD_DIR="$PROJECT_DIR/build"
 ARCHIVE_PATH="$BUILD_DIR/ClaudeIsland.xcarchive"
 EXPORT_PATH="$BUILD_DIR/export"
 
+# Signing style. A developer's Mac has an Xcode account that can fetch signing
+# assets, so automatic stays the default there. A CI runner has only the
+# Developer ID certificate imported into a temporary keychain and no account to
+# ask, so it sets SIGNING_STYLE=manual and names the identity outright.
+#
+# Manual signing needs no provisioning profile here: the app is not sandboxed
+# and its only entitlement is user-selected read-only, so nothing about it
+# requires a profile to authorise.
+SIGNING_STYLE="${SIGNING_STYLE:-automatic}"
+SIGNING_TEAM="${SIGNING_TEAM:-36U788QB6S}"
+SIGNING_IDENTITY="${SIGNING_IDENTITY:-Developer ID Application}"
+
+if [ "$SIGNING_STYLE" = "manual" ]; then
+    SIGN_ARGS=(
+        CODE_SIGN_STYLE=Manual
+        CODE_SIGN_IDENTITY="$SIGNING_IDENTITY"
+        DEVELOPMENT_TEAM="$SIGNING_TEAM"
+    )
+else
+    SIGN_ARGS=(CODE_SIGN_STYLE=Automatic)
+fi
+
 echo "=== Building Vibe Notch ==="
+echo "Signing style: $SIGNING_STYLE"
 echo ""
 
 # Clean previous builds
@@ -32,7 +55,7 @@ xcodebuild archive \
     -destination "generic/platform=macOS" \
     -onlyUsePackageVersionsFromResolvedFile \
     ENABLE_HARDENED_RUNTIME=YES \
-    CODE_SIGN_STYLE=Automatic \
+    "${SIGN_ARGS[@]}" \
     2>&1 | xcpretty
 ARCHIVE_EXIT=${PIPESTATUS[0]}
 set -e
@@ -46,13 +69,14 @@ if [ "$ARCHIVE_EXIT" -ne 0 ]; then
         -destination "generic/platform=macOS" \
         -onlyUsePackageVersionsFromResolvedFile \
         ENABLE_HARDENED_RUNTIME=YES \
-        CODE_SIGN_STYLE=Automatic
+        "${SIGN_ARGS[@]}"
     exit 1
 fi
 
-# Create ExportOptions.plist if it doesn't exist
+# The export has to agree with how the archive was signed, or xcodebuild goes
+# looking for signing assets the runner has no account to fetch.
 EXPORT_OPTIONS="$BUILD_DIR/ExportOptions.plist"
-cat > "$EXPORT_OPTIONS" << 'EOF'
+cat > "$EXPORT_OPTIONS" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -62,7 +86,9 @@ cat > "$EXPORT_OPTIONS" << 'EOF'
     <key>destination</key>
     <string>export</string>
     <key>signingStyle</key>
-    <string>automatic</string>
+    <string>$SIGNING_STYLE</string>
+    <key>teamID</key>
+    <string>$SIGNING_TEAM</string>
 </dict>
 </plist>
 EOF
