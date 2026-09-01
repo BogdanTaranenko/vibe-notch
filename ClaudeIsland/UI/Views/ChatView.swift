@@ -181,6 +181,18 @@ struct ChatView: View {
 
     @State private var isHeaderHovered = false
 
+    /// Spells out what the figure is and is not, since the app cannot know how
+    /// the user is actually billed.
+    private func costExplanation(_ cost: CostEstimate) -> String {
+        let models = session.usage.byModel.keys.sorted().joined(separator: ", ")
+        let base = "Estimated \(cost.formatted) at list API prices for this session"
+        let scope = models.isEmpty ? "" : " (\(models))"
+        let caveat = cost.isPartial
+            ? ". At least one model has no published price here, so the real total is higher."
+            : ". Subscription plans and negotiated rates are not accounted for."
+        return base + scope + caveat
+    }
+
     private var chatHeader: some View {
         Button {
             viewModel.exitChat()
@@ -197,6 +209,16 @@ struct ChatView: View {
                     .lineLimit(1)
 
                 Spacer()
+
+                // List-price estimate for everything in this transcript. Shown
+                // here rather than on the row because it needs the room to say
+                // what it is when hovered.
+                if let cost = SessionMeter.cost(for: session.usage) {
+                    Text(cost.formatted)
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.35))
+                        .help(costExplanation(cost))
+                }
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)

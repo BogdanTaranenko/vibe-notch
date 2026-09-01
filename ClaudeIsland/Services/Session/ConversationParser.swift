@@ -9,29 +9,6 @@
 import Foundation
 import os.log
 
-/// Token usage information from a session
-struct UsageInfo: Equatable {
-    var inputTokens: Int = 0
-    var outputTokens: Int = 0
-    var cacheReadTokens: Int = 0
-    var cacheCreationTokens: Int = 0
-
-    var totalTokens: Int {
-        inputTokens + outputTokens
-    }
-
-    /// Formatted string for display (e.g., "12.5K tokens")
-    var formattedTotal: String {
-        let total = totalTokens
-        if total >= 1_000_000 {
-            return String(format: "%.1fM", Double(total) / 1_000_000)
-        } else if total >= 1_000 {
-            return String(format: "%.1fK", Double(total) / 1_000)
-        }
-        return "\(total)"
-    }
-}
-
 struct ConversationInfo: Equatable {
     let summary: String?
     let lastMessage: String?
@@ -152,10 +129,11 @@ actor ConversationParser {
             if json["type"] as? String == "assistant",
                let message = json["message"] as? [String: Any],
                let usageDict = message["usage"] as? [String: Any] {
-                usage.inputTokens += usageDict["input_tokens"] as? Int ?? 0
-                usage.outputTokens += usageDict["output_tokens"] as? Int ?? 0
-                usage.cacheReadTokens += usageDict["cache_read_input_tokens"] as? Int ?? 0
-                usage.cacheCreationTokens += usageDict["cache_creation_input_tokens"] as? Int ?? 0
+                usage.accumulate(
+                    usageDict,
+                    model: message["model"] as? String,
+                    isSidechain: json["isSidechain"] as? Bool ?? false
+                )
             }
         }
 

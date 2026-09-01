@@ -271,6 +271,13 @@ struct InstanceRow: View {
                         .foregroundColor(.white.opacity(0.4))
                         .lineLimit(1)
                 }
+
+                // How close this session is to compaction. Absent rather than
+                // empty when the model is one we have no window for.
+                if let context = SessionMeter.context(for: session.usage) {
+                    ContextBar(meter: context)
+                        .padding(.top, 2)
+                }
             }
 
             Spacer(minLength: 0)

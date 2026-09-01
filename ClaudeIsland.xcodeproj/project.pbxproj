@@ -13,6 +13,9 @@
 		6F927F393BF0795CE1F93AC0 /* ClaudePaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72A47F83693CFC02BE850996 /* ClaudePaths.swift */; };
 		0F2C614C6CF94504A07951DE /* AutoApproveRule.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE24BDE272DD4C9CB279A208 /* AutoApproveRule.swift */; };
 		A1D4E7C2B93F40518C6A2D31 /* HealthReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C08B6F14A27D45E39B1C7A62 /* HealthReport.swift */; };
+		C5A3D92E6B4F50C39E7A8203 /* SessionMeter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8C4A63D07E5692BBD39E8F4 /* SessionMeter.swift */; };
+		E4F2B81D5C3A49B28D6F7192 /* ClaudeModelPricing.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7B3E52C96D4581FAC28D7E3 /* ClaudeModelPricing.swift */; };
+		B3E1A70C4D2F48A19C5E6081 /* UsageInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9C2F41B85A3470E9B17C6D2 /* UsageInfo.swift */; };
 		B17817AB36A078593DB04C05 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 68E576EFAA649973D0FEE407 /* Cocoa.framework */; };
 		EF2A2D77681D560806F1E09B /* SessionPhase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 181C9C24C02960D6FD09AE14 /* SessionPhase.swift */; };
 		FD0F42E72EE7ABA400980302 /* Mixpanel in Frameworks */ = {isa = PBXBuildFile; productRef = FD0F42E62EE7ABA400980302 /* Mixpanel */; };
@@ -24,6 +27,9 @@
 		181C9C24C02960D6FD09AE14 /* SessionPhase.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SessionPhase.swift; path = ClaudeIsland/Models/SessionPhase.swift; sourceTree = "<group>"; };
 		EE24BDE272DD4C9CB279A208 /* AutoApproveRule.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AutoApproveRule.swift; path = ClaudeIsland/Models/AutoApproveRule.swift; sourceTree = "<group>"; };
 		C08B6F14A27D45E39B1C7A62 /* HealthReport.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HealthReport.swift; path = ClaudeIsland/Models/HealthReport.swift; sourceTree = "<group>"; };
+		F8C4A63D07E5692BBD39E8F4 /* SessionMeter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SessionMeter.swift; path = ClaudeIsland/Models/SessionMeter.swift; sourceTree = "<group>"; };
+		A7B3E52C96D4581FAC28D7E3 /* ClaudeModelPricing.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ClaudeModelPricing.swift; path = ClaudeIsland/Models/ClaudeModelPricing.swift; sourceTree = "<group>"; };
+		D9C2F41B85A3470E9B17C6D2 /* UsageInfo.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = UsageInfo.swift; path = ClaudeIsland/Models/UsageInfo.swift; sourceTree = "<group>"; };
 		1C2535AD03B72D9E8FDFFDFC /* HookInstaller.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HookInstaller.swift; path = ClaudeIsland/Services/Hooks/HookInstaller.swift; sourceTree = "<group>"; };
 		62261CD3DBF47CCE0A501A1C /* Settings.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Settings.swift; path = ClaudeIsland/Core/Settings.swift; sourceTree = "<group>"; };
 		68E576EFAA649973D0FEE407 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/System/Library/Frameworks/Cocoa.framework; sourceTree = DEVELOPER_DIR; };
@@ -93,6 +99,9 @@
 				181C9C24C02960D6FD09AE14 /* SessionPhase.swift */,
 				EE24BDE272DD4C9CB279A208 /* AutoApproveRule.swift */,
 				C08B6F14A27D45E39B1C7A62 /* HealthReport.swift */,
+				F8C4A63D07E5692BBD39E8F4 /* SessionMeter.swift */,
+				A7B3E52C96D4581FAC28D7E3 /* ClaudeModelPricing.swift */,
+				D9C2F41B85A3470E9B17C6D2 /* UsageInfo.swift */,
 			);
 			name = SourcesUnderTest;
 			sourceTree = "<group>";
@@ -250,6 +259,9 @@
 				EF2A2D77681D560806F1E09B /* SessionPhase.swift in Sources */,
 				0F2C614C6CF94504A07951DE /* AutoApproveRule.swift in Sources */,
 				A1D4E7C2B93F40518C6A2D31 /* HealthReport.swift in Sources */,
+				C5A3D92E6B4F50C39E7A8203 /* SessionMeter.swift in Sources */,
+				E4F2B81D5C3A49B28D6F7192 /* ClaudeModelPricing.swift in Sources */,
+				B3E1A70C4D2F48A19C5E6081 /* UsageInfo.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
