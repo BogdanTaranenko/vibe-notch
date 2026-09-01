@@ -373,16 +373,16 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/mixpanel/mixpanel-swift";
 			requirement = {
-				branch = master;
-				kind = branch;
+				kind = upToNextMajorVersion;
+				minimumVersion = 6.3.0;
 			};
 		};
 		FD33FD712EDF32D7002A6548 /* XCRemoteSwiftPackageReference "swift-markdown" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/swiftlang/swift-markdown";
 			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.5.0;
+				kind = upToNextMinorVersion;
+				minimumVersion = 0.8.0;
 			};
 		};
 		FDA49F802EE11E3C00F9612E /* XCRemoteSwiftPackageReference "Sparkle" */ = {

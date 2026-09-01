@@ -17,6 +17,10 @@ mkdir -p "$BUILD_DIR"
 
 cd "$PROJECT_DIR"
 
+# Release builds resolve strictly from the committed Package.resolved
+# (-onlyUsePackageVersionsFromResolvedFile), so a release either uses exactly the
+# reviewed dependency revisions or fails outright. Without it Xcode is free to
+# re-resolve mid-archive and ship something nobody looked at.
 # Build and archive — pipe to xcpretty when available, but capture the real
 # xcodebuild exit code so a noisy-but-successful xcpretty doesn't fail the build.
 echo "Archiving..."
@@ -26,6 +30,7 @@ xcodebuild archive \
     -configuration Release \
     -archivePath "$ARCHIVE_PATH" \
     -destination "generic/platform=macOS" \
+    -onlyUsePackageVersionsFromResolvedFile \
     ENABLE_HARDENED_RUNTIME=YES \
     CODE_SIGN_STYLE=Automatic \
     2>&1 | xcpretty
@@ -39,6 +44,7 @@ if [ "$ARCHIVE_EXIT" -ne 0 ]; then
         -configuration Release \
         -archivePath "$ARCHIVE_PATH" \
         -destination "generic/platform=macOS" \
+        -onlyUsePackageVersionsFromResolvedFile \
         ENABLE_HARDENED_RUNTIME=YES \
         CODE_SIGN_STYLE=Automatic
     exit 1

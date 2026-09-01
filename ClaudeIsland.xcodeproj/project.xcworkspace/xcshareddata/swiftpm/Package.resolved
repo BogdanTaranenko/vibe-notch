@@ -1,0 +1,60 @@
+{
+  "originHash" : "59c492bd06c524f73f70d11ac7424433a1d0afb3db6e9e9de59509edfac23cef",
+  "pins" : [
+    {
+      "identity" : "json-logic-swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/advantagefse/json-logic-swift",
+      "state" : {
+        "revision" : "9088eed1b26937fe13d248aa24d7632a51be28e2",
+        "version" : "1.2.4"
+      }
+    },
+    {
+      "identity" : "mixpanel-swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/mixpanel/mixpanel-swift",
+      "state" : {
+        "revision" : "8399b37fca5717ba8701e0d2af26b98ce48bcaf3",
+        "version" : "6.5.1"
+      }
+    },
+    {
+      "identity" : "mixpanel-swift-common",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/mixpanel/mixpanel-swift-common.git",
+      "state" : {
+        "revision" : "ffd168d972a1bea7e86104f253a3e105c69217e5",
+        "version" : "1.0.1"
+      }
+    },
+    {
+      "identity" : "sparkle",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/sparkle-project/Sparkle",
+      "state" : {
+        "revision" : "ac2def288cbff5cfc7df3ffef6abdf45b72bcb0a",
+        "version" : "2.9.6"
+      }
+    },
+    {
+      "identity" : "swift-cmark",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/swiftlang/swift-cmark.git",
+      "state" : {
+        "revision" : "924936d0427cb25a61169739a7660230bffa6ea6",
+        "version" : "0.8.0"
+      }
+    },
+    {
+      "identity" : "swift-markdown",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/swiftlang/swift-markdown",
+      "state" : {
+        "revision" : "3c6f9523da3a1ec2fd829673e472d95b8097a3b8",
+        "version" : "0.8.0"
+      }
+    }
+  ],
+  "version" : 3
+}
