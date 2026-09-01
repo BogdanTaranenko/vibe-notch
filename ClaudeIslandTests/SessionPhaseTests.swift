@@ -69,6 +69,7 @@ struct SessionPhaseTests {
         #expect(SessionPhase.idle.canTransition(to: .processing))
         #expect(SessionPhase.idle.canTransition(to: approval()))
         #expect(SessionPhase.idle.canTransition(to: .compacting))
+        #expect(SessionPhase.idle.canTransition(to: .waitingForInput), "SessionStart lands on a session created at .idle")
     }
 
     @Test("Processing can finish, ask, compact, or be interrupted")
@@ -142,15 +143,15 @@ struct SessionPhaseTests {
         #expect(approval(tool: "Bash", at: at) == approval(tool: "Bash", at: at))
     }
 
-    // MARK: - Documented gap
+    // MARK: - Regressions
 
-    @Test("KNOWN GAP: a fresh session cannot go straight to waitingForInput")
-    func idleToWaitingForInputIsRefused() {
-        // SessionStart reports status "waiting_for_input", but a session is
-        // created at .idle and this edge does not exist, so the transition is
-        // dropped and a newly started session reads "Idle" instead of "Ready"
-        // until its first prompt. Pinned as-is so the day someone adds the edge,
-        // this test is what tells them the behaviour changed on purpose.
-        #expect(SessionPhase.idle.canTransition(to: .waitingForInput) == false)
+    @Test("A fresh session can report waitingForInput straight away")
+    func idleToWaitingForInputIsAllowed() {
+        // SessionStart reports status "waiting_for_input" and a session is
+        // created at .idle, so without this edge the very first event of a
+        // session is dropped and the notch reads "Idle" instead of "Ready"
+        // until the first prompt lands. See claude-island-state.py's
+        // SessionStart branch and SessionStore.createSession.
+        #expect(SessionPhase.idle.canTransition(to: .waitingForInput))
     }
 }
