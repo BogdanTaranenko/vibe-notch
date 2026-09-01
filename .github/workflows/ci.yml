@@ -1,12 +1,18 @@
 name: CI
 
+# Every branch, not just main: a net that only catches things at merge time
+# lets a branch sit broken for days. `branches` is set rather than omitted so
+# the release tags create-release.sh pushes do not each trigger a second run.
 on:
   push:
-    branches: [main]
+    branches: ['**']
   pull_request:
 
+# Keyed on the branch name rather than the ref, so a same-repo pull request
+# does not run the suite twice -- `head_ref` on a pull_request event and
+# `ref_name` on a push both resolve to the branch, landing in one group.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
