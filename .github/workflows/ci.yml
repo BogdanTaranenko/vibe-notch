@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Manual only. A feature branch gets no automatic run, but it can be checked
+  # on demand without widening the push trigger to every branch.
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -16,6 +19,21 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      # The runner's default is Xcode 16.4, whose Swift 6.1 predates
+      # SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor. It ignores the setting rather
+      # than rejecting it, so the app target compiles as nonisolated and fails on
+      # call sites that are correct under the isolation the project actually
+      # builds with. 63 of the 75 app-target files carry no explicit @MainActor
+      # and get their isolation from that one setting, so this has to be fixed in
+      # the toolchain, not by annotating the code.
+      #
+      # Only the major is pinned: 26.x is what the build settings require, and
+      # floating the minor lets the runner track the image as point releases are
+      # added and retired.
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '26.x'
 
       - name: Toolchain
         run: |
