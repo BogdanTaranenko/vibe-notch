@@ -405,10 +405,13 @@ struct HookInstaller {
         return resolved
     }
 
-    /// Internal rather than private so it can be exercised against a stub shell —
-    /// launching someone else's login shell is the riskiest thing in this file.
-    static func resolveClaudeViaLoginShell() -> String? {
-        let shell = Foundation.ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
+    /// Internal, and takes the shell as a parameter, so it can be exercised
+    /// against a stub — launching someone else's login shell is the riskiest
+    /// thing in this file. Tests pass a path rather than setting `SHELL`, which
+    /// is process-global and would not survive parallel execution.
+    static func resolveClaudeViaLoginShell(
+        shell: String = Foundation.ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
+    ) -> String? {
         guard FileManager.default.isExecutableFile(atPath: shell) else { return nil }
 
         // -i as well as -l: zsh reads nvm/fnm/mise setup from .zshrc, which a

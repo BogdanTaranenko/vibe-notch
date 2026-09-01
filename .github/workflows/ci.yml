@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Build and test
+    runs-on: macos-15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+
+      # -onlyUsePackageVersionsFromResolvedFile makes resolution fail rather than
+      # silently update, so a PR that changes a package requirement without
+      # committing the new Package.resolved stops here.
+      - name: Resolve dependencies
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -scheme ClaudeIsland \
+            -onlyUsePackageVersionsFromResolvedFile
+
+      # Belt and braces: catches resolution that succeeded but rewrote the file.
+      # This app is signed, notarized and auto-updated, so every release has to
+      # build from exactly the revisions someone reviewed.
+      - name: Package.resolved is unchanged
+        run: |
+          git diff --exit-code \
+            -- ClaudeIsland.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+
+      # The test bundle is hostless — it compiles the sources under test directly
+      # rather than launching the app, which would rewrite the runner's
+      # ~/.claude and need a GUI session.
+      - name: Test
+        run: |
+          xcodebuild test \
+            -scheme ClaudeIsland \
+            -destination 'platform=macOS' \
+            -onlyUsePackageVersionsFromResolvedFile \
+            CODE_SIGNING_ALLOWED=NO
+
+      # Debug is what `xcodebuild test` builds; Release is what ships, and it
+      # optimises differently. Build both or find out at release time.
+      - name: Build Release
+        run: |
+          xcodebuild build \
+            -scheme ClaudeIsland \
+            -configuration Release \
+            -destination 'generic/platform=macOS' \
+            -onlyUsePackageVersionsFromResolvedFile \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Upload results on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcresult
+          path: |
+            ~/Library/Developer/Xcode/DerivedData/**/Logs/Test/*.xcresult
+          retention-days: 5
+          if-no-files-found: ignore
