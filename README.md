@@ -5,11 +5,11 @@
     A macOS menu bar app that brings Dynamic Island-style notifications to Claude Code CLI sessions.
     <br />
     <br />
-    <a href="https://github.com/farouqaldori/vibe-notch/releases/latest" target="_blank" rel="noopener noreferrer">
-      <img src="https://img.shields.io/github/v/release/farouqaldori/vibe-notch?style=rounded&color=white&labelColor=000000&label=release" alt="Release Version" />
+    <a href="https://github.com/BogdanTaranenko/vibe-notch/releases/latest" target="_blank" rel="noopener noreferrer">
+      <img src="https://img.shields.io/github/v/release/BogdanTaranenko/vibe-notch?style=rounded&color=white&labelColor=000000&label=release" alt="Release Version" />
     </a>
     <a href="#" target="_blank" rel="noopener noreferrer">
-      <img alt="GitHub Downloads" src="https://img.shields.io/github/downloads/farouqaldori/vibe-notch/total?style=rounded&color=white&labelColor=000000">
+      <img alt="GitHub Downloads" src="https://img.shields.io/github/downloads/BogdanTaranenko/vibe-notch/total?style=rounded&color=white&labelColor=000000">
     </a>
   </p>
 </div>
