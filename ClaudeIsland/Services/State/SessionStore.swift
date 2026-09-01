@@ -69,6 +69,14 @@ actor SessionStore {
         case .permissionSocketFailed(let sessionId, let toolUseId):
             await processSocketFailure(sessionId: sessionId, toolUseId: toolUseId)
 
+        case .permissionAutoApproved(let sessionId, let toolUseId, let toolName, let ruleId):
+            processPermissionAutoApproved(
+                sessionId: sessionId,
+                toolUseId: toolUseId,
+                toolName: toolName,
+                ruleId: ruleId
+            )
+
         case .fileUpdated(let payload):
             await processFileUpdate(payload)
 
@@ -129,6 +137,13 @@ actor SessionStore {
         // Track new session in Mixpanel
         if isNewSession {
             Mixpanel.mainInstance().track(event: "Session Started")
+        }
+
+        // A new prompt starts a new turn, so the auto-approval count starts
+        // over -- it is meant to answer "what did rules let through just now",
+        // not "ever".
+        if event.event == "UserPromptSubmit" {
+            session.autoApprovalsThisTurn = 0
         }
 
         session.pid = event.pid
@@ -395,6 +410,26 @@ actor SessionStore {
     }
 
     // MARK: - Permission Processing
+
+    /// A rule answered a permission request. The phase is deliberately left
+    /// alone: the session was already .processing from the PreToolUse that
+    /// preceded this, never entered .waitingForApproval, and the tool is about
+    /// to run. All that changes is the count the notch shows for this turn.
+    private func processPermissionAutoApproved(
+        sessionId: String,
+        toolUseId: String,
+        toolName: String,
+        ruleId: UUID
+    ) {
+        guard var session = sessions[sessionId] else { return }
+
+        session.autoApprovalsThisTurn += 1
+        updateToolStatus(in: &session, toolId: toolUseId, status: .running)
+        session.lastActivity = Date()
+        sessions[sessionId] = session
+
+        Self.logger.info("Auto-approved \(toolName, privacy: .public) for \(sessionId.prefix(8), privacy: .public) (rule \(ruleId.uuidString.prefix(8), privacy: .public), \(session.autoApprovalsThisTurn) this turn)")
+    }
 
     private func processPermissionApproved(sessionId: String, toolUseId: String) async {
         guard var session = sessions[sessionId] else { return }

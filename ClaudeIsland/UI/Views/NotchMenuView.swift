@@ -18,8 +18,21 @@ struct NotchMenuView: View {
     @ObservedObject private var updateManager = UpdateManager.shared
     @ObservedObject private var screenSelector = ScreenSelector.shared
     @ObservedObject private var soundSelector = SoundSelector.shared
+    @ObservedObject private var autoApproveSelector = AutoApproveRuleSelector.shared
+    @ObservedObject private var healthSelector = HealthSelector.shared
     @State private var hooksInstalled: Bool = false
+    @State private var hooksOutcome: HookInstallOutcome?
     @State private var launchAtLogin: Bool = false
+
+    /// Short right-hand label for the Hooks row when the install could not
+    /// complete. Nil means the row shows its ordinary On/Off state.
+    private var hooksWarning: String? {
+        switch hooksOutcome {
+        case .settingsUnreadable: return "Check settings.json"
+        case .writeFailed: return "Write failed"
+        case .installed, .alreadyCurrent, .none: return nil
+        }
+    }
 
     var body: some View {
         // ScrollView so the menu gracefully scrolls when content exceeds the
@@ -42,12 +55,15 @@ struct NotchMenuView: View {
                 ScreenPickerRow(screenSelector: screenSelector)
                 SoundPickerRow(soundSelector: soundSelector)
                 ClaudeDirPickerRow()
+                AutoApproveRulesRow(selector: autoApproveSelector)
 
                 Divider()
                     .background(Color.white.opacity(0.08))
                     .padding(.vertical, 4)
 
                 // System settings
+                HealthRow(selector: healthSelector)
+
                 MenuToggleRow(
                     icon: "power",
                     label: "Launch at Login",
@@ -69,14 +85,21 @@ struct NotchMenuView: View {
                 MenuToggleRow(
                     icon: "arrow.triangle.2.circlepath",
                     label: "Hooks",
-                    isOn: hooksInstalled
+                    isOn: hooksInstalled,
+                    warning: hooksWarning
                 ) {
                     if hooksInstalled {
                         HookInstaller.uninstall()
                         hooksInstalled = false
+                        hooksOutcome = nil
                     } else {
-                        HookInstaller.installIfNeeded()
-                        hooksInstalled = true
+                        // Tapping again retries — the usual reasons this row is
+                        // off are a settings.json the user has just fixed, or a
+                        // Claude Code they have just installed, so forget where
+                        // we last looked for the binary and search again.
+                        HookInstaller.forgetResolvedBinary()
+                        hooksOutcome = HookInstaller.installIfNeeded()
+                        hooksInstalled = HookInstaller.isInstalled()
                     }
                 }
 
@@ -126,8 +149,11 @@ struct NotchMenuView: View {
 
     private func refreshStates() {
         hooksInstalled = HookInstaller.isInstalled()
+        hooksOutcome = HookInstaller.lastOutcome
         launchAtLogin = SMAppService.mainApp.status == .enabled
         screenSelector.refreshScreens()
+        autoApproveSelector.reload()
+        healthSelector.refresh()
     }
 }
 
@@ -489,6 +515,10 @@ struct MenuToggleRow: View {
     let icon: String
     let label: String
     let isOn: Bool
+    /// When set, replaces the On/Off state with an amber problem label. Keeps
+    /// the row's height identical, since NotchViewModel.openedSize is summed by
+    /// hand against the rows in this menu.
+    var warning: String? = nil
     let action: () -> Void
 
     @State private var isHovered = false
@@ -498,7 +528,7 @@ struct MenuToggleRow: View {
             HStack(spacing: 10) {
                 Image(systemName: icon)
                     .font(.system(size: 12))
-                    .foregroundColor(textColor)
+                    .foregroundColor(warning == nil ? textColor : TerminalColors.amber)
                     .frame(width: 16)
 
                 Text(label)
@@ -507,13 +537,24 @@ struct MenuToggleRow: View {
 
                 Spacer()
 
-                Circle()
-                    .fill(isOn ? TerminalColors.green : Color.white.opacity(0.3))
-                    .frame(width: 6, height: 6)
+                if let warning {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 9))
+                        .foregroundColor(TerminalColors.amber)
 
-                Text(isOn ? "On" : "Off")
-                    .font(.system(size: 11))
-                    .foregroundColor(.white.opacity(0.4))
+                    Text(warning)
+                        .font(.system(size: 11))
+                        .foregroundColor(TerminalColors.amber.opacity(0.9))
+                        .lineLimit(1)
+                } else {
+                    Circle()
+                        .fill(isOn ? TerminalColors.green : Color.white.opacity(0.3))
+                        .frame(width: 6, height: 6)
+
+                    Text(isOn ? "On" : "Off")
+                        .font(.system(size: 11))
+                        .foregroundColor(.white.opacity(0.4))
+                }
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)

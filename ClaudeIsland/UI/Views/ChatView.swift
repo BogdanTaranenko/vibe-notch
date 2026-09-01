@@ -181,6 +181,18 @@ struct ChatView: View {
 
     @State private var isHeaderHovered = false
 
+    /// Spells out what the figure is and is not, since the app cannot know how
+    /// the user is actually billed.
+    private func costExplanation(_ cost: CostEstimate) -> String {
+        let models = session.usage.byModel.keys.sorted().joined(separator: ", ")
+        let base = "Estimated \(cost.formatted) at list API prices for this session"
+        let scope = models.isEmpty ? "" : " (\(models))"
+        let caveat = cost.isPartial
+            ? ". At least one model has no published price here, so the real total is higher."
+            : ". Subscription plans and negotiated rates are not accounted for."
+        return base + scope + caveat
+    }
+
     private var chatHeader: some View {
         Button {
             viewModel.exitChat()
@@ -197,6 +209,16 @@ struct ChatView: View {
                     .lineLimit(1)
 
                 Spacer()
+
+                // List-price estimate for everything in this transcript. Shown
+                // here rather than on the row because it needs the room to say
+                // what it is when hovered.
+                if let cost = SessionMeter.cost(for: session.usage) {
+                    Text(cost.formatted)
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.35))
+                        .help(costExplanation(cost))
+                }
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
@@ -415,8 +437,10 @@ struct ChatView: View {
         ChatApprovalBar(
             tool: tool,
             toolInput: session.pendingToolInput,
+            alwaysAllowSummary: session.autoApproveProposal?.summary,
             onApprove: { approvePermission() },
-            onDeny: { denyPermission() }
+            onDeny: { denyPermission() },
+            onAlwaysAllow: { alwaysAllowPermission() }
         )
     }
 
@@ -463,6 +487,10 @@ struct ChatView: View {
 
     private func denyPermission() {
         sessionMonitor.denyPermission(sessionId: sessionId, reason: nil)
+    }
+
+    private func alwaysAllowPermission() {
+        sessionMonitor.alwaysAllow(sessionId: sessionId)
     }
 
     private func sendMessage() {
@@ -1128,8 +1156,12 @@ struct ChatInteractivePromptBar: View {
 struct ChatApprovalBar: View {
     let tool: String
     let toolInput: String?
+    /// What tapping "Always" would grant, in the user's words. Nil when no rule
+    /// can safely be derived, which also hides the button.
+    let alwaysAllowSummary: String?
     let onApprove: () -> Void
     let onDeny: () -> Void
+    let onAlwaysAllow: () -> Void
 
     @State private var showContent = false
     @State private var showAllowButton = false
@@ -1147,6 +1179,19 @@ struct ChatApprovalBar: View {
                         .font(.system(size: 11))
                         .foregroundColor(.white.opacity(0.5))
                         .lineLimit(1)
+                }
+                // Spelling out the grant next to the button that makes it: the
+                // scope is decided from the request, not from the label, so the
+                // user should be able to read what they are about to create.
+                if let summary = alwaysAllowSummary {
+                    HStack(spacing: 3) {
+                        Image(systemName: "bolt.fill")
+                            .font(.system(size: 8))
+                        Text("Always = \(summary)")
+                            .font(.system(size: 10))
+                            .lineLimit(1)
+                    }
+                    .foregroundColor(.white.opacity(0.35))
                 }
             }
             .opacity(showContent ? 1 : 0)
@@ -1169,6 +1214,26 @@ struct ChatApprovalBar: View {
             .buttonStyle(.plain)
             .opacity(showDenyButton ? 1 : 0)
             .scaleEffect(showDenyButton ? 1 : 0.8)
+
+            // Always button -- deliberately the quietest of the three, since it
+            // is the only one that outlives this request.
+            if alwaysAllowSummary != nil {
+                Button {
+                    onAlwaysAllow()
+                } label: {
+                    Text("Always")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.white.opacity(0.7))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .overlay(
+                            Capsule().stroke(Color.white.opacity(0.25), lineWidth: 1)
+                        )
+                }
+                .buttonStyle(.plain)
+                .opacity(showDenyButton ? 1 : 0)
+                .scaleEffect(showDenyButton ? 1 : 0.8)
+            }
 
             // Allow button
             Button {

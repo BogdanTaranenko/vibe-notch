@@ -7,12 +7,35 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		26A308FA022F79630D51AB94 /* HookInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C2535AD03B72D9E8FDFFDFC /* HookInstaller.swift */; };
+		35883EED721D53FE79BAC97D /* HookSocketServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2BFC8893004EF2580F0C880 /* HookSocketServer.swift */; };
+		3E283E03875FF27EB8F42D78 /* Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62261CD3DBF47CCE0A501A1C /* Settings.swift */; };
+		6F927F393BF0795CE1F93AC0 /* ClaudePaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72A47F83693CFC02BE850996 /* ClaudePaths.swift */; };
+		0F2C614C6CF94504A07951DE /* AutoApproveRule.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE24BDE272DD4C9CB279A208 /* AutoApproveRule.swift */; };
+		A1D4E7C2B93F40518C6A2D31 /* HealthReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = C08B6F14A27D45E39B1C7A62 /* HealthReport.swift */; };
+		C5A3D92E6B4F50C39E7A8203 /* SessionMeter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8C4A63D07E5692BBD39E8F4 /* SessionMeter.swift */; };
+		E4F2B81D5C3A49B28D6F7192 /* ClaudeModelPricing.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7B3E52C96D4581FAC28D7E3 /* ClaudeModelPricing.swift */; };
+		B3E1A70C4D2F48A19C5E6081 /* UsageInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9C2F41B85A3470E9B17C6D2 /* UsageInfo.swift */; };
+		B17817AB36A078593DB04C05 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 68E576EFAA649973D0FEE407 /* Cocoa.framework */; };
+		EF2A2D77681D560806F1E09B /* SessionPhase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 181C9C24C02960D6FD09AE14 /* SessionPhase.swift */; };
 		FD0F42E72EE7ABA400980302 /* Mixpanel in Frameworks */ = {isa = PBXBuildFile; productRef = FD0F42E62EE7ABA400980302 /* Mixpanel */; };
 		FDA49F7D2EE11E3C00F9612E /* Markdown in Frameworks */ = {isa = PBXBuildFile; productRef = FD33FD722EDF32D7002A6548 /* Markdown */; };
 		FDA49F7E2EE11E3C00F9612E /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = FDA49F7F2EE11E3C00F9612E /* Sparkle */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		181C9C24C02960D6FD09AE14 /* SessionPhase.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SessionPhase.swift; path = ClaudeIsland/Models/SessionPhase.swift; sourceTree = "<group>"; };
+		EE24BDE272DD4C9CB279A208 /* AutoApproveRule.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AutoApproveRule.swift; path = ClaudeIsland/Models/AutoApproveRule.swift; sourceTree = "<group>"; };
+		C08B6F14A27D45E39B1C7A62 /* HealthReport.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HealthReport.swift; path = ClaudeIsland/Models/HealthReport.swift; sourceTree = "<group>"; };
+		F8C4A63D07E5692BBD39E8F4 /* SessionMeter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SessionMeter.swift; path = ClaudeIsland/Models/SessionMeter.swift; sourceTree = "<group>"; };
+		A7B3E52C96D4581FAC28D7E3 /* ClaudeModelPricing.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ClaudeModelPricing.swift; path = ClaudeIsland/Models/ClaudeModelPricing.swift; sourceTree = "<group>"; };
+		D9C2F41B85A3470E9B17C6D2 /* UsageInfo.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = UsageInfo.swift; path = ClaudeIsland/Models/UsageInfo.swift; sourceTree = "<group>"; };
+		1C2535AD03B72D9E8FDFFDFC /* HookInstaller.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HookInstaller.swift; path = ClaudeIsland/Services/Hooks/HookInstaller.swift; sourceTree = "<group>"; };
+		62261CD3DBF47CCE0A501A1C /* Settings.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Settings.swift; path = ClaudeIsland/Core/Settings.swift; sourceTree = "<group>"; };
+		68E576EFAA649973D0FEE407 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/System/Library/Frameworks/Cocoa.framework; sourceTree = DEVELOPER_DIR; };
+		72A47F83693CFC02BE850996 /* ClaudePaths.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ClaudePaths.swift; path = ClaudeIsland/Core/ClaudePaths.swift; sourceTree = "<group>"; };
+		E2BFC8893004EF2580F0C880 /* HookSocketServer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HookSocketServer.swift; path = ClaudeIsland/Services/Hooks/HookSocketServer.swift; sourceTree = "<group>"; };
+		F7F50B1793E20E8F0E53BE31 /* ClaudeIslandTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ClaudeIslandTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		FD33FD5D2EDF32D7002A6548 /* Vibe Notch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Vibe Notch.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -27,6 +50,13 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		F7F38477FB31592B2FB9A9A7 /* ClaudeIslandTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
+			path = ClaudeIslandTests;
+			sourceTree = "<group>";
+		};
 		FD33FD5F2EDF32D7002A6548 /* ClaudeIsland */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -38,6 +68,14 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		82D607414A1F44DE0B01D691 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B17817AB36A078593DB04C05 /* Cocoa.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		FD33FD5A2EDF32D7002A6548 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -51,11 +89,47 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		0461136721992870AC2C48EC /* SourcesUnderTest */ = {
+			isa = PBXGroup;
+			children = (
+				1C2535AD03B72D9E8FDFFDFC /* HookInstaller.swift */,
+				E2BFC8893004EF2580F0C880 /* HookSocketServer.swift */,
+				72A47F83693CFC02BE850996 /* ClaudePaths.swift */,
+				62261CD3DBF47CCE0A501A1C /* Settings.swift */,
+				181C9C24C02960D6FD09AE14 /* SessionPhase.swift */,
+				EE24BDE272DD4C9CB279A208 /* AutoApproveRule.swift */,
+				C08B6F14A27D45E39B1C7A62 /* HealthReport.swift */,
+				F8C4A63D07E5692BBD39E8F4 /* SessionMeter.swift */,
+				A7B3E52C96D4581FAC28D7E3 /* ClaudeModelPricing.swift */,
+				D9C2F41B85A3470E9B17C6D2 /* UsageInfo.swift */,
+			);
+			name = SourcesUnderTest;
+			sourceTree = "<group>";
+		};
+		C95A5DD99B15C5A94D17417E /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				E849BF5DB78F86BD38360296 /* OS X */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		E849BF5DB78F86BD38360296 /* OS X */ = {
+			isa = PBXGroup;
+			children = (
+				68E576EFAA649973D0FEE407 /* Cocoa.framework */,
+			);
+			name = "OS X";
+			sourceTree = "<group>";
+		};
 		FD33FD542EDF32D7002A6548 = {
 			isa = PBXGroup;
 			children = (
 				FD33FD5F2EDF32D7002A6548 /* ClaudeIsland */,
 				FD33FD5E2EDF32D7002A6548 /* Products */,
+				C95A5DD99B15C5A94D17417E /* Frameworks */,
+				F7F38477FB31592B2FB9A9A7 /* ClaudeIslandTests */,
+				0461136721992870AC2C48EC /* SourcesUnderTest */,
 			);
 			sourceTree = "<group>";
 		};
@@ -63,6 +137,7 @@
 			isa = PBXGroup;
 			children = (
 				FD33FD5D2EDF32D7002A6548 /* Vibe Notch.app */,
+				F7F50B1793E20E8F0E53BE31 /* ClaudeIslandTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -70,6 +145,26 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		6FA16F92677092C8D0660087 /* ClaudeIslandTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E60FE9A06642735232366E13 /* Build configuration list for PBXNativeTarget "ClaudeIslandTests" */;
+			buildPhases = (
+				190463AF2CF5D365D722461A /* Sources */,
+				82D607414A1F44DE0B01D691 /* Frameworks */,
+				0B1A393F685767307AB986ED /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				F7F38477FB31592B2FB9A9A7 /* ClaudeIslandTests */,
+			);
+			name = ClaudeIslandTests;
+			productName = ClaudeIslandTests;
+			productReference = F7F50B1793E20E8F0E53BE31 /* ClaudeIslandTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		FD33FD5C2EDF32D7002A6548 /* ClaudeIsland */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = FD33FD682EDF32D8002A6548 /* Build configuration list for PBXNativeTarget "ClaudeIsland" */;
@@ -130,11 +225,19 @@
 			projectRoot = "";
 			targets = (
 				FD33FD5C2EDF32D7002A6548 /* ClaudeIsland */,
+				6FA16F92677092C8D0660087 /* ClaudeIslandTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		0B1A393F685767307AB986ED /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		FD33FD5B2EDF32D7002A6548 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -145,6 +248,23 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		190463AF2CF5D365D722461A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				26A308FA022F79630D51AB94 /* HookInstaller.swift in Sources */,
+				35883EED721D53FE79BAC97D /* HookSocketServer.swift in Sources */,
+				6F927F393BF0795CE1F93AC0 /* ClaudePaths.swift in Sources */,
+				3E283E03875FF27EB8F42D78 /* Settings.swift in Sources */,
+				EF2A2D77681D560806F1E09B /* SessionPhase.swift in Sources */,
+				0F2C614C6CF94504A07951DE /* AutoApproveRule.swift in Sources */,
+				A1D4E7C2B93F40518C6A2D31 /* HealthReport.swift in Sources */,
+				C5A3D92E6B4F50C39E7A8203 /* SessionMeter.swift in Sources */,
+				E4F2B81D5C3A49B28D6F7192 /* ClaudeModelPricing.swift in Sources */,
+				B3E1A70C4D2F48A19C5E6081 /* UsageInfo.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		FD33FD592EDF32D7002A6548 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -155,6 +275,40 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
+		0F43F26946A5AEE216CCCA01 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.6;
+				PRODUCT_BUNDLE_IDENTIFIER = com.celestial.ClaudeIslandTests;
+				PRODUCT_MODULE_NAME = "$(PRODUCT_NAME:c99extidentifier)";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		7FD0C8817B01EC186A6D4D20 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.6;
+				PRODUCT_BUNDLE_IDENTIFIER = com.celestial.ClaudeIslandTests;
+				PRODUCT_MODULE_NAME = "$(PRODUCT_NAME:c99extidentifier)";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
 		FD33FD662EDF32D8002A6548 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -348,6 +502,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		E60FE9A06642735232366E13 /* Build configuration list for PBXNativeTarget "ClaudeIslandTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7FD0C8817B01EC186A6D4D20 /* Release */,
+				0F43F26946A5AEE216CCCA01 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		FD33FD582EDF32D7002A6548 /* Build configuration list for PBXProject "ClaudeIsland" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -373,16 +536,16 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/mixpanel/mixpanel-swift";
 			requirement = {
-				branch = master;
-				kind = branch;
+				kind = upToNextMajorVersion;
+				minimumVersion = 6.3.0;
 			};
 		};
 		FD33FD712EDF32D7002A6548 /* XCRemoteSwiftPackageReference "swift-markdown" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/swiftlang/swift-markdown";
 			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.5.0;
+				kind = upToNextMinorVersion;
+				minimumVersion = 0.8.0;
 			};
 		};
 		FDA49F802EE11E3C00F9612E /* XCRemoteSwiftPackageReference "Sparkle" */ = {

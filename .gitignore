@@ -11,8 +11,9 @@ xcuserdata/
 # Swift Package Manager
 .build/
 Packages/
-Package.resolved
-*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+# Package.resolved IS committed: this ships a signed, notarized, auto-updating
+# app, so every release must build from the same dependency revisions.
+*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/configuration/
 
 # CocoaPods
 Pods/

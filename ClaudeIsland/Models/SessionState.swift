@@ -53,6 +53,16 @@ struct SessionState: Equatable, Identifiable, Sendable {
     /// This removes pre-/clear items that no longer exist in the JSONL
     var needsClearReconciliation: Bool
 
+    // MARK: - Auto-Approval
+
+    /// How many permission requests a stored rule has answered since the
+    /// current turn began, reset on every UserPromptSubmit.
+    ///
+    /// The notch shows this whenever it is non-zero. A rule that works silently
+    /// is a rule the user has stopped being able to audit, so this is not
+    /// optional chrome -- it is the visible half of the feature.
+    var autoApprovalsThisTurn: Int
+
     // MARK: - Timestamps
 
     var lastActivity: Date
@@ -80,6 +90,7 @@ struct SessionState: Equatable, Identifiable, Sendable {
             lastToolName: nil, firstUserMessage: nil, lastUserMessageDate: nil
         ),
         needsClearReconciliation: Bool = false,
+        autoApprovalsThisTurn: Int = 0,
         lastActivity: Date = Date(),
         createdAt: Date = Date()
     ) {
@@ -95,6 +106,7 @@ struct SessionState: Equatable, Identifiable, Sendable {
         self.subagentState = subagentState
         self.conversationInfo = conversationInfo
         self.needsClearReconciliation = needsClearReconciliation
+        self.autoApprovalsThisTurn = autoApprovalsThisTurn
         self.lastActivity = lastActivity
         self.createdAt = createdAt
     }
@@ -147,6 +159,18 @@ struct SessionState: Equatable, Identifiable, Sendable {
     /// Formatted pending tool input for display
     var pendingToolInput: String? {
         activePermission?.formattedInput
+    }
+
+    /// The rule the "Always" button would store for the pending request, or
+    /// nil when none can safely be derived. Used to label the button with what
+    /// it actually grants rather than a generic "always allow".
+    var autoApproveProposal: AutoApproveRule? {
+        guard let permission = activePermission else { return nil }
+        return AutoApproveRule.proposal(
+            cwd: cwd,
+            toolName: permission.toolName,
+            toolInput: permission.toolInput
+        )
     }
 
     /// Last message content
