@@ -19,14 +19,35 @@ private let cornerRadiusInsets = (
 // edge sits flush against the screen bezel where a glow would have nowhere to go.
 private let hoverGlow = (
     color: Color(red: 0.757, green: 0.373, blue: 0.235), // #c15f3c
-    lineWidth: CGFloat(1),
-    innerRadius: CGFloat(4),
-    outerRadius: CGFloat(10)
+    lineWidth: CGFloat(1.5)
 )
 
+// The bloom, as concentric blurred strokes rather than shadows of the hairline.
+//
+// A `.shadow` spreads the stroke's own ink over the whole blur radius, and the
+// stroke is 1.5pt wide: measured against the desktop, the bloom came out at
+// ~4% of the stroke's brightness and was gone within 10pt, and widening the
+// radius only thinned it further. Each layer below puts real width behind the
+// blur, so there is something to spread.
+//
+// The bloom is knocked out inside the notch shape so it only pushes outward.
+// A stroke straddles its path, and the inner half is wasted everywhere it
+// lands: under the physical camera housing there are no pixels at all, and on
+// the wings either side of the cutout it just washes the notch interior orange
+// behind whatever the row is showing. Clipping it away costs nothing outside —
+// those pixels already integrated ink from both sides of the blur.
+private let hoverGlowLayers: [(width: CGFloat, blur: CGFloat, opacity: Double)] = [
+    (width: 20, blur: 16, opacity: 0.30),
+    (width: 10, blur: 8, opacity: 0.42),
+    (width: 5, blur: 3.5, opacity: 0.60)
+]
+
 // How far the glow mask reaches past the left, right and bottom edges so the
-// blurred shadow is not clipped on the three sides that keep it.
-private let hoverGlowSpread = hoverGlow.outerRadius * 3
+// widest blurred stroke is not clipped on the three sides that keep it.
+private let hoverGlowSpread: CGFloat = {
+    let widest = hoverGlowLayers[0]
+    return widest.width / 2 + widest.blur * 3
+}()
 
 struct NotchView: View {
     @ObservedObject var viewModel: NotchViewModel
@@ -140,6 +161,54 @@ struct NotchView: View {
         viewModel.status != .opened && viewModel.isHovering
     }
 
+    /// The hover glow: blurred strokes stacked widest-first under a crisp
+    /// hairline, masked to the sides and bottom.
+    private var hoverGlowOverlay: some View {
+        ZStack {
+            ZStack {
+                ForEach(hoverGlowLayers.indices, id: \.self) { index in
+                    currentNotchShape
+                        .stroke(
+                            hoverGlow.color.opacity(hoverGlowLayers[index].opacity),
+                            lineWidth: hoverGlowLayers[index].width
+                        )
+                        .blur(radius: hoverGlowLayers[index].blur)
+                }
+            }
+            .mask { outwardBloomMask }
+
+            // The crisp edge keeps both halves — it is what draws the notch
+            // outline, not part of the bloom.
+            currentNotchShape
+                .stroke(hoverGlow.color, lineWidth: hoverGlow.lineWidth)
+        }
+        .mask(alignment: .top) {
+            // Inset past the top stroke, extended well beyond the other three
+            // edges: everything drawn at or above the screen edge is clipped,
+            // the sides and bottom keep their full blur.
+            Rectangle()
+                .padding(.top, hoverGlow.lineWidth)
+                .padding(.horizontal, -hoverGlowSpread)
+                .padding(.bottom, -hoverGlowSpread)
+        }
+        .opacity(showsHoverGlow ? 1 : 0)
+        .allowsHitTesting(false)
+    }
+
+    /// Everything outside the notch shape, out to the blur's full reach: the
+    /// bloom is masked with this so it spreads away from the notch only.
+    private var outwardBloomMask: some View {
+        Rectangle()
+            .padding(.horizontal, -hoverGlowSpread)
+            .padding(.bottom, -hoverGlowSpread)
+            .overlay {
+                currentNotchShape
+                    .fill(Color.black)
+                    .blendMode(.destinationOut)
+            }
+            .compositingGroup()
+    }
+
     private var currentNotchShape: NotchShape {
         NotchShape(
             topCornerRadius: topCornerRadius,
@@ -181,24 +250,7 @@ struct NotchView: View {
                         color: (viewModel.status == .opened || isHovering) ? .black.opacity(0.7) : .clear,
                         radius: 6
                     )
-                    .overlay {
-                        currentNotchShape
-                            .stroke(hoverGlow.color, lineWidth: hoverGlow.lineWidth)
-                            .shadow(color: hoverGlow.color.opacity(0.8), radius: hoverGlow.innerRadius)
-                            .shadow(color: hoverGlow.color.opacity(0.4), radius: hoverGlow.outerRadius)
-                            .mask(alignment: .top) {
-                                // Inset past the top stroke, extended well beyond the
-                                // other three edges: everything drawn at or above the
-                                // screen edge is clipped, the sides and bottom keep
-                                // their full blur.
-                                Rectangle()
-                                    .padding(.top, hoverGlow.lineWidth)
-                                    .padding(.horizontal, -hoverGlowSpread)
-                                    .padding(.bottom, -hoverGlowSpread)
-                            }
-                            .opacity(showsHoverGlow ? 1 : 0)
-                            .allowsHitTesting(false)
-                    }
+                    .overlay { hoverGlowOverlay }
                     .frame(
                         maxWidth: viewModel.status == .opened ? notchSize.width : nil,
                         maxHeight: viewModel.status == .opened ? notchSize.height : nil,
