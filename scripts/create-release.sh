@@ -263,6 +263,32 @@ else
 After installation, Vibe Notch will automatically check for updates."
     fi
 
+    # The deltas generate_appcast just produced belong on this release too.
+    # They used to be advertised from raw.githubusercontent.com on the default
+    # branch, where they never existed -- releases/ is gitignored -- so every
+    # delta 404'd and every client silently fell back to the full DMG.
+    #
+    # Upload them space-free: GitHub rewrites a space in an asset name to a dot,
+    # which would not match the URL written into the appcast.
+    DELTA_STAGE="$BUILD_DIR/deltas"
+    rm -rf "$DELTA_STAGE"
+    mkdir -p "$DELTA_STAGE"
+
+    shopt -s nullglob
+    for delta in "$RELEASE_DIR/appcast/Vibe Notch$BUILD-"*.delta; do
+        base="$(basename "$delta")"
+        cp "$delta" "$DELTA_STAGE/${base/#Vibe Notch/$APP_NAME-}"
+    done
+    staged=("$DELTA_STAGE"/*.delta)
+    shopt -u nullglob
+
+    if [ ${#staged[@]} -gt 0 ]; then
+        echo "Uploading ${#staged[@]} delta(s) to v$VERSION..."
+        gh release upload "v$VERSION" "${staged[@]}" --repo "$GITHUB_REPO" --clobber
+    else
+        echo "No deltas for build $BUILD -- clients will take the full DMG."
+    fi
+
     GITHUB_DOWNLOAD_URL="https://github.com/$GITHUB_REPO/releases/download/v$VERSION/$APP_NAME-$VERSION.dmg"
     echo "GitHub release created: https://github.com/$GITHUB_REPO/releases/tag/v$VERSION"
     echo "Download URL: $GITHUB_DOWNLOAD_URL"
@@ -283,9 +309,16 @@ elif [ -z "$GITHUB_DOWNLOAD_URL" ]; then
 else
     cp "$RELEASE_DIR/appcast/appcast.xml" "$REPO_APPCAST"
 
-    # generate_appcast writes a local file:// or bare-filename URL; rewrite it
-    # to the GitHub release asset so installed clients can actually fetch it.
-    sed -i '' "s|url=\"[^\"]*$APP_NAME-$VERSION.dmg\"|url=\"$GITHUB_DOWNLOAD_URL\"|g" "$REPO_APPCAST"
+    # generate_appcast writes a local file:// or bare-filename URL for every
+    # enclosure. Point each one at the release that carries the file — the DMG
+    # and the deltas alike, for older items as well as this one. This used to
+    # rewrite only the current DMG, which is why every delta in the feed and
+    # every previous version's DMG pointed at a branch path that 404s.
+    if ! "$SCRIPT_DIR/rewrite-appcast-urls.py" "$REPO_APPCAST" "$GITHUB_REPO"; then
+        echo "ERROR: could not point every enclosure at a release asset."
+        echo "Sparkle would ship 404s to installed clients."
+        exit 1
+    fi
     echo "Wrote $REPO_APPCAST (download URL: $GITHUB_DOWNLOAD_URL)"
 
     if ! grep -q "$GITHUB_DOWNLOAD_URL" "$REPO_APPCAST"; then
