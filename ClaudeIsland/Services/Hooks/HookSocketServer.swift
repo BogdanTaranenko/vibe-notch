@@ -97,6 +97,15 @@ struct PendingPermission: Sendable {
     let receivedAt: Date
 }
 
+/// What has actually come through the socket, for the health panel. Events
+/// arriving is the only check that proves the whole chain rather than one link
+/// of it, so it is counted at the point of decode.
+struct HookTraffic: Sendable, Equatable {
+    let lastEventName: String?
+    let lastEventAt: Date?
+    let count: Int
+}
+
 /// Callback for hook events
 typealias HookEventHandler = @Sendable (HookEvent) -> Void
 
@@ -134,6 +143,42 @@ class HookSocketServer {
     /// PermissionRequest events don't include tool_use_id, so we cache from PreToolUse
     private var toolUseIdCache: [String: [String]] = [:]
     private let cacheLock = NSLock()
+
+    /// Read from the main actor by the health panel and written on the socket
+    /// queue, so both are guarded rather than inferred from `serverSocket`.
+    private let trafficLock = NSLock()
+    private var _isListening = false
+    private var _traffic = HookTraffic(lastEventName: nil, lastEventAt: nil, count: 0)
+
+    /// Whether the socket is bound and accepting connections.
+    var isListening: Bool {
+        trafficLock.lock()
+        defer { trafficLock.unlock() }
+        return _isListening
+    }
+
+    /// The most recent hook event to arrive, and how many have arrived in all.
+    var traffic: HookTraffic {
+        trafficLock.lock()
+        defer { trafficLock.unlock() }
+        return _traffic
+    }
+
+    private func recordArrival(of event: HookEvent) {
+        trafficLock.lock()
+        _traffic = HookTraffic(
+            lastEventName: event.event,
+            lastEventAt: Date(),
+            count: _traffic.count + 1
+        )
+        trafficLock.unlock()
+    }
+
+    private func setListening(_ listening: Bool) {
+        trafficLock.lock()
+        _isListening = listening
+        trafficLock.unlock()
+    }
 
     private init() {}
 
@@ -214,12 +259,14 @@ class HookSocketServer {
         }
 
         logger.info("Listening on \(Self.socketPath, privacy: .public)")
+        setListening(true)
 
         acceptSource = DispatchSource.makeReadSource(fileDescriptor: serverSocket, queue: queue)
         acceptSource?.setEventHandler { [weak self] in
             self?.acceptConnection()
         }
         acceptSource?.setCancelHandler { [weak self] in
+            self?.setListening(false)
             if let fd = self?.serverSocket, fd >= 0 {
                 close(fd)
                 self?.serverSocket = -1
@@ -230,6 +277,7 @@ class HookSocketServer {
 
     /// Stop the socket server
     func stop() {
+        setListening(false)
         acceptSource?.cancel()
         acceptSource = nil
         unlink(Self.socketPath)
@@ -442,6 +490,7 @@ class HookSocketServer {
         }
 
         logger.debug("Received: \(event.event, privacy: .public) for \(event.sessionId.prefix(8), privacy: .public)")
+        recordArrival(of: event)
 
         if event.event == "PreToolUse" {
             cacheToolUseId(event: event)

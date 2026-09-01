@@ -19,6 +19,7 @@ struct NotchMenuView: View {
     @ObservedObject private var screenSelector = ScreenSelector.shared
     @ObservedObject private var soundSelector = SoundSelector.shared
     @ObservedObject private var autoApproveSelector = AutoApproveRuleSelector.shared
+    @ObservedObject private var healthSelector = HealthSelector.shared
     @State private var hooksInstalled: Bool = false
     @State private var hooksOutcome: HookInstallOutcome?
     @State private var launchAtLogin: Bool = false
@@ -61,6 +62,8 @@ struct NotchMenuView: View {
                     .padding(.vertical, 4)
 
                 // System settings
+                HealthRow(selector: healthSelector)
+
                 MenuToggleRow(
                     icon: "power",
                     label: "Launch at Login",
@@ -150,6 +153,7 @@ struct NotchMenuView: View {
         launchAtLogin = SMAppService.mainApp.status == .enabled
         screenSelector.refreshScreens()
         autoApproveSelector.reload()
+        healthSelector.refresh()
     }
 }
 

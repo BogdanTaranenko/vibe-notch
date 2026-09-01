@@ -76,10 +76,13 @@ struct HookInstaller {
             return .settingsUnreadable
         }
 
+        let version = detectClaudeCodeVersion()
+        setLastDetectedVersion(version)
+
         let plan = planSettingsUpdate(
             existingData: existingData,
             command: "\(detectPython()) \(ClaudePaths.hookScriptShellPath)",
-            version: detectClaudeCodeVersion()
+            version: version
         )
 
         switch plan {
@@ -220,6 +223,7 @@ struct HookInstaller {
     private static let stateLock = NSLock()
     nonisolated(unsafe) private static var hasBackedUpThisRun = false
     nonisolated(unsafe) private static var _lastOutcome: HookInstallOutcome?
+    nonisolated(unsafe) private static var _lastDetectedVersion: ClaudeCodeVersion?
 
     /// Result of the most recent install attempt, for the settings panel.
     static var lastOutcome: HookInstallOutcome? {
@@ -228,9 +232,24 @@ struct HookInstaller {
         return _lastOutcome
     }
 
+    /// The Claude Code version the last install used to decide which hook
+    /// events to register. Reported by the health panel rather than a fresh
+    /// probe, so what it shows is what the registration is actually based on.
+    static var lastDetectedVersion: ClaudeCodeVersion? {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return _lastDetectedVersion
+    }
+
     private static func setLastOutcome(_ outcome: HookInstallOutcome) {
         stateLock.lock()
         _lastOutcome = outcome
+        stateLock.unlock()
+    }
+
+    private static func setLastDetectedVersion(_ version: ClaudeCodeVersion?) {
+        stateLock.lock()
+        _lastDetectedVersion = version
         stateLock.unlock()
     }
 
@@ -283,10 +302,12 @@ struct HookInstaller {
     /// Simple semantic version used to gate which hook events we register.
     /// Claude Code rejects unknown hook keys, so we must only register
     /// events the installed version knows about.
-    struct ClaudeCodeVersion: Comparable {
+    struct ClaudeCodeVersion: Comparable, CustomStringConvertible {
         let major: Int
         let minor: Int
         let patch: Int
+
+        var description: String { "\(major).\(minor).\(patch)" }
 
         static func < (lhs: ClaudeCodeVersion, rhs: ClaudeCodeVersion) -> Bool {
             (lhs.major, lhs.minor, lhs.patch) < (rhs.major, rhs.minor, rhs.patch)
@@ -326,6 +347,17 @@ struct HookInstaller {
     /// Probing costs a shell startup on the launch path, and the answer does not
     /// usually change between two launches a minute apart.
     private static let failedProbeCooldown: TimeInterval = 24 * 60 * 60
+
+    /// Where we last found the `claude` binary, without probing for it. Nil
+    /// when nothing has been resolved, or when the remembered path has since
+    /// stopped being executable.
+    static var resolvedBinaryPath: String? {
+        guard let remembered = UserDefaults.standard.string(forKey: resolvedBinaryKey),
+              FileManager.default.isExecutableFile(atPath: remembered) else {
+            return nil
+        }
+        return remembered
+    }
 
     /// Drop everything we remember about where `claude` lives, so the next
     /// resolution starts from scratch. The Hooks toggle calls this, which makes
@@ -579,29 +611,82 @@ struct HookInstaller {
 
     /// Check if hooks are currently installed
     static func isInstalled() -> Bool {
-        let settings = ClaudePaths.settingsFile
+        installedHookCommand() != nil
+    }
 
-        guard let data = try? Data(contentsOf: settings),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let hooks = json["hooks"] as? [String: Any] else {
-            return false
+    /// The command line settings.json currently runs for our hooks, read back
+    /// from disk. This is the registration as Claude Code will actually see it,
+    /// not what we intended to write.
+    static func installedHookCommand() -> String? {
+        guard let data = try? Data(contentsOf: ClaudePaths.settingsFile),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
         }
+        return hookCommand(in: json)
+    }
+
+    /// First Vibe Notch hook command anywhere in a parsed settings.json.
+    ///
+    /// Deliberately tolerant: settings.json is the user's file and may hold any
+    /// shape at any key. Anything unrecognised is skipped rather than assumed.
+    nonisolated static func hookCommand(in json: [String: Any]) -> String? {
+        guard let hooks = json["hooks"] as? [String: Any] else { return nil }
 
         for (_, value) in hooks {
-            if let entries = value as? [[String: Any]] {
-                for entry in entries {
-                    if let entryHooks = entry["hooks"] as? [[String: Any]] {
-                        for hook in entryHooks {
-                            if let cmd = hook["command"] as? String,
-                               cmd.contains("claude-island-state.py") {
-                                return true
-                            }
-                        }
+            guard let entries = value as? [[String: Any]] else { continue }
+            for entry in entries {
+                guard let entryHooks = entry["hooks"] as? [[String: Any]] else { continue }
+                for hook in entryHooks {
+                    if let command = hook["command"] as? String, isClaudeIslandHook(hook) {
+                        return command
                     }
                 }
             }
         }
-        return false
+        return nil
+    }
+
+    /// The interpreter a hook command runs. The script path that follows it is
+    /// shell-quoted and may contain spaces, so only the first word is ours.
+    nonisolated static func interpreter(in command: String) -> String? {
+        command.split(separator: " ", omittingEmptySubsequences: true).first.map(String.init)
+    }
+
+    /// Directories searched for a bare interpreter name.
+    ///
+    /// Spelled out rather than shelled out for: a GUI app inherits a minimal
+    /// PATH, so `which` would search roughly this list anyway, and doing it
+    /// with `stat` keeps the health check off the Process path entirely.
+    static let executableSearchPaths = [
+        "/usr/bin",
+        "/usr/local/bin",
+        "/opt/homebrew/bin",
+        "/bin",
+        "/opt/local/bin",
+    ]
+
+    /// Where an interpreter resolves for *this* app, or nil when it does not
+    /// resolve at all.
+    ///
+    /// Worth stating plainly: the hook itself runs from Claude Code's
+    /// environment, not ours, so a name that resolves here is evidence and not
+    /// proof. A name that resolves nowhere on this machine is the useful case.
+    nonisolated static func resolveExecutable(
+        _ name: String,
+        searchPaths: [String] = executableSearchPaths,
+        isExecutable: (String) -> Bool = { FileManager.default.isExecutableFile(atPath: $0) }
+    ) -> String? {
+        guard !name.isEmpty else { return nil }
+
+        // Anything with a slash is a path already, relative or absolute, and
+        // must not be looked up as a bare name.
+        if name.contains("/") {
+            return isExecutable(name) ? name : nil
+        }
+
+        return searchPaths
+            .map { $0.hasSuffix("/") ? $0 + name : $0 + "/" + name }
+            .first(where: isExecutable)
     }
 
     /// Uninstall hooks from settings.json and remove script

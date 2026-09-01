@@ -57,6 +57,7 @@ class NotchViewModel: ObservableObject {
     private let soundSelector = SoundSelector.shared
     private let claudeDirSelector = ClaudeDirSelector.shared
     private let autoApproveSelector = AutoApproveRuleSelector.shared
+    private let healthSelector = HealthSelector.shared
 
     // MARK: - Geometry
 
@@ -79,16 +80,17 @@ class NotchViewModel: ObservableObject {
             )
         case .menu:
             // Base height covers all static rows (Back, 3 picker rows, the
-            // auto-approve row, 3 toggles, Accessibility, Update, GitHub, Quit
-            // + 4 dividers + padding). Picker expansion deltas added on top
-            // when expanded.
+            // auto-approve row, the health row, 3 toggles, Accessibility,
+            // Update, GitHub, Quit + 4 dividers + padding). Picker expansion
+            // deltas added on top when expanded.
             return CGSize(
                 width: min(screenRect.width * 0.4, 480),
-                height: 584
+                height: 628
                     + screenSelector.expandedPickerHeight
                     + soundSelector.expandedPickerHeight
                     + claudeDirSelector.expandedPickerHeight
                     + autoApproveSelector.expandedPickerHeight
+                    + healthSelector.expandedPickerHeight
             )
         case .instances:
             return CGSize(
@@ -133,6 +135,14 @@ class NotchViewModel: ObservableObject {
             .store(in: &cancellables)
 
         claudeDirSelector.$isPickerExpanded
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
+
+        autoApproveSelector.$isExpanded
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+            .store(in: &cancellables)
+
+        healthSelector.$isExpanded
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &cancellables)
     }
