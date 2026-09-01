@@ -20,7 +20,7 @@ struct HealthRow: View {
             if selector.isExpanded {
                 if let report = selector.report {
                     ForEach(report.checks) { check in
-                        HealthCheckItem(check: check)
+                        HealthCheckItem(check: check, onRunAction: run)
                     }
                     footer(for: report)
                 } else {
@@ -34,6 +34,21 @@ struct HealthRow: View {
             }
         }
         .onAppear { selector.refresh() }
+    }
+
+    /// Runs a remedy and re-reads the panel, so the row answers for itself
+    /// instead of leaving the user to guess whether it worked.
+    private func run(_ action: HealthAction) {
+        switch action {
+        case .resetAccessibilityGrant:
+            Task {
+                await AccessibilityPermission.resetAndRequest()
+                await MainActor.run {
+                    AccessibilityPermission.openSettings()
+                    selector.refresh()
+                }
+            }
+        }
     }
 
     // MARK: - Header
@@ -121,6 +136,7 @@ struct HealthRow: View {
 
 private struct HealthCheckItem: View {
     let check: HealthCheck
+    let onRunAction: (HealthAction) -> Void
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
@@ -147,8 +163,11 @@ private struct HealthCheckItem: View {
                     Text(remedy)
                         .font(.system(size: 10))
                         .foregroundColor(color(for: check.status).opacity(0.85))
-                        .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
+                }
+
+                if let action = check.action {
+                    HealthActionButton(action: action, onRun: onRunAction)
                 }
             }
 
@@ -168,5 +187,33 @@ private func color(for status: HealthStatus) -> Color {
     case .warning: return TerminalColors.amber
     case .failing: return TerminalColors.red
     case .waiting: return .white.opacity(0.3)
+    }
+}
+
+/// The button a remedy can carry. Deliberately quiet: it changes something on
+/// the user's machine, so it should not read as the obvious next click.
+private struct HealthActionButton: View {
+    let action: HealthAction
+    let onRun: (HealthAction) -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Button {
+            onRun(action)
+        } label: {
+            Text(action.label)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(.white.opacity(isHovered ? 0.95 : 0.6))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(
+                    RoundedRectangle(cornerRadius: 5)
+                        .fill(Color.white.opacity(isHovered ? 0.12 : 0.06))
+                )
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
+        .padding(.top, 3)
     }
 }

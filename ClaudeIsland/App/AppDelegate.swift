@@ -68,6 +68,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         Mixpanel.mainInstance().flush()
 
         HookInstaller.installIfNeeded()
+
+        // Ask for Accessibility before the notch exists. The panel's hover and
+        // click detection are global NSEvent monitors, so without this grant it
+        // draws and cannot be opened -- and until something asks, macOS never
+        // lists the app, leaving the user to add it by hand. The system dialog
+        // appears only while the decision is undetermined; afterwards this is a
+        // silent boolean read, so it is safe on every launch.
+        AccessibilityPermission.requestIfNeeded()
+
         NSApplication.shared.setActivationPolicy(.accessory)
 
         windowManager = WindowManager()

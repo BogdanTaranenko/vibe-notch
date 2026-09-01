@@ -24,6 +24,13 @@ class HealthSelector: ObservableObject {
     /// Height of a check that is not — the remedy takes a second line.
     private let problemRowHeight: CGFloat = 46
 
+    /// Height of a check whose remedy also carries an action button, and whose
+    /// explanation runs longer than the two lines a plain remedy gets. The
+    /// accessibility remedy has to describe a grant that looks correct and is
+    /// not, which does not fit in a sentence; if this constant is short the
+    /// panel is told a size it cannot draw and the last row is clipped.
+    private let actionRowHeight: CGFloat = 92
+
     /// Height of the "checked <age>" footer with its re-check button.
     private let footerHeight: CGFloat = 28
 
@@ -47,7 +54,8 @@ class HealthSelector: ObservableObject {
         guard let report else { return okRowHeight }
 
         let content = report.checks.reduce(CGFloat.zero) { total, check in
-            total + (check.remedy == nil ? okRowHeight : problemRowHeight)
+            if check.action != nil { return total + actionRowHeight }
+            return total + (check.remedy == nil ? okRowHeight : problemRowHeight)
         }
         return min(content + footerHeight, maxExpandedHeight)
     }
