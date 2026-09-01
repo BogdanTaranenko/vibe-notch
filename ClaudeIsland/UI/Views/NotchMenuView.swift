@@ -18,6 +18,7 @@ struct NotchMenuView: View {
     @ObservedObject private var updateManager = UpdateManager.shared
     @ObservedObject private var screenSelector = ScreenSelector.shared
     @ObservedObject private var soundSelector = SoundSelector.shared
+    @ObservedObject private var autoApproveSelector = AutoApproveRuleSelector.shared
     @State private var hooksInstalled: Bool = false
     @State private var hooksOutcome: HookInstallOutcome?
     @State private var launchAtLogin: Bool = false
@@ -53,6 +54,7 @@ struct NotchMenuView: View {
                 ScreenPickerRow(screenSelector: screenSelector)
                 SoundPickerRow(soundSelector: soundSelector)
                 ClaudeDirPickerRow()
+                AutoApproveRulesRow(selector: autoApproveSelector)
 
                 Divider()
                     .background(Color.white.opacity(0.08))
@@ -147,6 +149,7 @@ struct NotchMenuView: View {
         hooksOutcome = HookInstaller.lastOutcome
         launchAtLogin = SMAppService.mainApp.status == .enabled
         screenSelector.refreshScreens()
+        autoApproveSelector.reload()
     }
 }
 

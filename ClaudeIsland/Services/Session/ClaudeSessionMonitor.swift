@@ -71,6 +71,19 @@ class ClaudeSessionMonitor: ObservableObject {
                         .permissionSocketFailed(sessionId: sessionId, toolUseId: toolUseId)
                     )
                 }
+            },
+            // Read fresh on every request rather than captured, so revoking a
+            // rule in the settings panel takes effect on the next tool call.
+            autoApproveRules: { AppSettings.autoApproveRules },
+            onAutoApproved: { event, rule in
+                Task {
+                    await SessionStore.shared.process(.permissionAutoApproved(
+                        sessionId: event.sessionId,
+                        toolUseId: event.toolUseId ?? "",
+                        toolName: event.tool ?? "unknown",
+                        ruleId: rule.id
+                    ))
+                }
             }
         )
     }
@@ -117,6 +130,39 @@ class ClaudeSessionMonitor: ObservableObject {
 
             await SessionStore.shared.process(
                 .permissionDenied(sessionId: sessionId, toolUseId: permission.toolUseId, reason: reason)
+            )
+        }
+    }
+
+    /// Approve this request and store a rule, so the same shape of request is
+    /// answered without asking from now on.
+    ///
+    /// The rule is derived from the request itself by
+    /// ``AutoApproveRule/proposal(cwd:toolName:toolInput:now:)``, which decides
+    /// how wide it is allowed to be. When no rule can safely be derived this
+    /// still approves once -- the button never silently does nothing.
+    func alwaysAllow(sessionId: String) {
+        Task {
+            guard let session = await SessionStore.shared.session(for: sessionId),
+                  let permission = session.activePermission else {
+                return
+            }
+
+            if let rule = AutoApproveRule.proposal(
+                cwd: session.cwd,
+                toolName: permission.toolName,
+                toolInput: permission.toolInput
+            ) {
+                AppSettings.addAutoApproveRule(rule)
+            }
+
+            HookSocketServer.shared.respondToPermission(
+                toolUseId: permission.toolUseId,
+                decision: "allow"
+            )
+
+            await SessionStore.shared.process(
+                .permissionApproved(sessionId: sessionId, toolUseId: permission.toolUseId)
             )
         }
     }

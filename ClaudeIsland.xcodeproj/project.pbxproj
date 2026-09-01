@@ -11,6 +11,7 @@
 		35883EED721D53FE79BAC97D /* HookSocketServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2BFC8893004EF2580F0C880 /* HookSocketServer.swift */; };
 		3E283E03875FF27EB8F42D78 /* Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62261CD3DBF47CCE0A501A1C /* Settings.swift */; };
 		6F927F393BF0795CE1F93AC0 /* ClaudePaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72A47F83693CFC02BE850996 /* ClaudePaths.swift */; };
+		0F2C614C6CF94504A07951DE /* AutoApproveRule.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE24BDE272DD4C9CB279A208 /* AutoApproveRule.swift */; };
 		B17817AB36A078593DB04C05 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 68E576EFAA649973D0FEE407 /* Cocoa.framework */; };
 		EF2A2D77681D560806F1E09B /* SessionPhase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 181C9C24C02960D6FD09AE14 /* SessionPhase.swift */; };
 		FD0F42E72EE7ABA400980302 /* Mixpanel in Frameworks */ = {isa = PBXBuildFile; productRef = FD0F42E62EE7ABA400980302 /* Mixpanel */; };
@@ -20,6 +21,7 @@
 
 /* Begin PBXFileReference section */
 		181C9C24C02960D6FD09AE14 /* SessionPhase.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SessionPhase.swift; path = ClaudeIsland/Models/SessionPhase.swift; sourceTree = "<group>"; };
+		EE24BDE272DD4C9CB279A208 /* AutoApproveRule.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AutoApproveRule.swift; path = ClaudeIsland/Models/AutoApproveRule.swift; sourceTree = "<group>"; };
 		1C2535AD03B72D9E8FDFFDFC /* HookInstaller.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HookInstaller.swift; path = ClaudeIsland/Services/Hooks/HookInstaller.swift; sourceTree = "<group>"; };
 		62261CD3DBF47CCE0A501A1C /* Settings.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Settings.swift; path = ClaudeIsland/Core/Settings.swift; sourceTree = "<group>"; };
 		68E576EFAA649973D0FEE407 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.0.sdk/System/Library/Frameworks/Cocoa.framework; sourceTree = DEVELOPER_DIR; };
@@ -87,6 +89,7 @@
 				72A47F83693CFC02BE850996 /* ClaudePaths.swift */,
 				62261CD3DBF47CCE0A501A1C /* Settings.swift */,
 				181C9C24C02960D6FD09AE14 /* SessionPhase.swift */,
+				EE24BDE272DD4C9CB279A208 /* AutoApproveRule.swift */,
 			);
 			name = SourcesUnderTest;
 			sourceTree = "<group>";
@@ -242,6 +245,7 @@
 				6F927F393BF0795CE1F93AC0 /* ClaudePaths.swift in Sources */,
 				3E283E03875FF27EB8F42D78 /* Settings.swift in Sources */,
 				EF2A2D77681D560806F1E09B /* SessionPhase.swift in Sources */,
+				0F2C614C6CF94504A07951DE /* AutoApproveRule.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

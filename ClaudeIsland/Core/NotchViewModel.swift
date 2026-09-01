@@ -56,6 +56,7 @@ class NotchViewModel: ObservableObject {
     private let screenSelector = ScreenSelector.shared
     private let soundSelector = SoundSelector.shared
     private let claudeDirSelector = ClaudeDirSelector.shared
+    private let autoApproveSelector = AutoApproveRuleSelector.shared
 
     // MARK: - Geometry
 
@@ -77,15 +78,17 @@ class NotchViewModel: ObservableObject {
                 height: 580
             )
         case .menu:
-            // Base height covers all static rows (Back, 3 picker rows, 3 toggles,
-            // Accessibility, Update, GitHub, Quit + 4 dividers + padding).
-            // Picker expansion deltas added on top when expanded.
+            // Base height covers all static rows (Back, 3 picker rows, the
+            // auto-approve row, 3 toggles, Accessibility, Update, GitHub, Quit
+            // + 4 dividers + padding). Picker expansion deltas added on top
+            // when expanded.
             return CGSize(
                 width: min(screenRect.width * 0.4, 480),
-                height: 540
+                height: 584
                     + screenSelector.expandedPickerHeight
                     + soundSelector.expandedPickerHeight
                     + claudeDirSelector.expandedPickerHeight
+                    + autoApproveSelector.expandedPickerHeight
             )
         case .instances:
             return CGSize(

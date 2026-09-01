@@ -185,6 +185,20 @@ struct InstanceRow: View {
                             .font(.system(size: 10, weight: .medium, design: .monospaced))
                             .foregroundColor(.white.opacity(0.3))
                     }
+
+                    // Permissions a rule answered this turn. Always visible
+                    // while non-zero: a rule that works silently is a rule the
+                    // user has stopped being able to audit.
+                    if session.autoApprovalsThisTurn > 0 {
+                        HStack(spacing: 2) {
+                            Image(systemName: "bolt.fill")
+                                .font(.system(size: 8))
+                            Text("\(session.autoApprovalsThisTurn)")
+                                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        }
+                        .foregroundColor(TerminalColors.amber.opacity(0.85))
+                        .help("\(session.autoApprovalsThisTurn) permission(s) auto-approved this turn")
+                    }
                 }
 
                 // Show tool call when waiting for approval, otherwise last activity

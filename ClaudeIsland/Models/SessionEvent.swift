@@ -27,6 +27,11 @@ enum SessionEvent: Sendable {
     /// Permission socket failed (connection died before response)
     case permissionSocketFailed(sessionId: String, toolUseId: String)
 
+    /// A permission request was answered by a stored auto-approve rule rather
+    /// than by the user. Carries the rule so the count the notch shows can be
+    /// traced back to what granted it.
+    case permissionAutoApproved(sessionId: String, toolUseId: String, toolName: String, ruleId: UUID)
+
     // MARK: - File Events (from ConversationParser)
 
     /// JSONL file was updated with new content
@@ -191,6 +196,8 @@ extension SessionEvent: CustomStringConvertible {
             return "permissionDenied(session: \(sessionId.prefix(8)), tool: \(toolUseId.prefix(12)))"
         case .permissionSocketFailed(let sessionId, let toolUseId):
             return "permissionSocketFailed(session: \(sessionId.prefix(8)), tool: \(toolUseId.prefix(12)))"
+        case .permissionAutoApproved(let sessionId, let toolUseId, let toolName, let ruleId):
+            return "permissionAutoApproved(session: \(sessionId.prefix(8)), tool: \(toolName)/\(toolUseId.prefix(12)), rule: \(ruleId.uuidString.prefix(8)))"
         case .fileUpdated(let payload):
             return "fileUpdated(session: \(payload.sessionId.prefix(8)), messages: \(payload.messages.count))"
         case .interruptDetected(let sessionId):

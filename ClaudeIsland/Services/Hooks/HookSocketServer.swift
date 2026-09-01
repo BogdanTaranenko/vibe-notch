@@ -103,6 +103,14 @@ typealias HookEventHandler = @Sendable (HookEvent) -> Void
 /// Callback for permission response failures (socket died)
 typealias PermissionFailureHandler = @Sendable (_ sessionId: String, _ toolUseId: String) -> Void
 
+/// Supplies the auto-approve rules in force right now. Read on the socket
+/// queue for each permission request, so a rule revoked in the settings panel
+/// applies to the very next request with nothing to invalidate.
+typealias AutoApproveRuleProvider = @Sendable () -> [AutoApproveRule]
+
+/// Callback for a permission answered by a rule rather than by the user
+typealias AutoApprovalHandler = @Sendable (_ event: HookEvent, _ rule: AutoApproveRule) -> Void
+
 /// Unix domain socket server that receives events from Claude Code hooks
 /// Uses GCD DispatchSource for non-blocking I/O
 class HookSocketServer {
@@ -113,6 +121,8 @@ class HookSocketServer {
     private var acceptSource: DispatchSourceRead?
     private var eventHandler: HookEventHandler?
     private var permissionFailureHandler: PermissionFailureHandler?
+    private var autoApproveRuleProvider: AutoApproveRuleProvider?
+    private var autoApprovalHandler: AutoApprovalHandler?
     private let queue = DispatchQueue(label: "com.claudeisland.socket", qos: .userInitiated)
 
     /// Pending permission requests indexed by toolUseId
@@ -128,17 +138,37 @@ class HookSocketServer {
     private init() {}
 
     /// Start the socket server
-    func start(onEvent: @escaping HookEventHandler, onPermissionFailure: PermissionFailureHandler? = nil) {
+    ///
+    /// `autoApproveRules` is optional: with no provider every permission
+    /// request is parked for the user exactly as before.
+    func start(
+        onEvent: @escaping HookEventHandler,
+        onPermissionFailure: PermissionFailureHandler? = nil,
+        autoApproveRules: AutoApproveRuleProvider? = nil,
+        onAutoApproved: AutoApprovalHandler? = nil
+    ) {
         queue.async { [weak self] in
-            self?.startServer(onEvent: onEvent, onPermissionFailure: onPermissionFailure)
+            self?.startServer(
+                onEvent: onEvent,
+                onPermissionFailure: onPermissionFailure,
+                autoApproveRules: autoApproveRules,
+                onAutoApproved: onAutoApproved
+            )
         }
     }
 
-    private func startServer(onEvent: @escaping HookEventHandler, onPermissionFailure: PermissionFailureHandler?) {
+    private func startServer(
+        onEvent: @escaping HookEventHandler,
+        onPermissionFailure: PermissionFailureHandler?,
+        autoApproveRules: AutoApproveRuleProvider?,
+        onAutoApproved: AutoApprovalHandler?
+    ) {
         guard serverSocket < 0 else { return }
 
         eventHandler = onEvent
         permissionFailureHandler = onPermissionFailure
+        autoApproveRuleProvider = autoApproveRules
+        autoApprovalHandler = onAutoApproved
 
         unlink(Self.socketPath)
 
@@ -434,8 +464,6 @@ class HookSocketServer {
                 return
             }
 
-            logger.debug("Permission request - keeping socket open for \(event.sessionId.prefix(8), privacy: .public) tool:\(toolUseId.prefix(12), privacy: .public)")
-
             let updatedEvent = HookEvent(
                 sessionId: event.sessionId,
                 cwd: event.cwd,
@@ -449,6 +477,33 @@ class HookSocketServer {
                 notificationType: event.notificationType,
                 message: event.message
             )
+
+            // A stored rule answers here, on the socket queue, before the
+            // request is ever parked -- so the session never enters
+            // .waitingForApproval and the notch never flashes a prompt the user
+            // is not being asked to answer.
+            if let rule = matchingAutoApproveRule(for: updatedEvent) {
+                logger.info("Auto-approved \(updatedEvent.tool ?? "?", privacy: .public) for \(updatedEvent.sessionId.prefix(8), privacy: .public) by rule \(rule.id.uuidString.prefix(8), privacy: .public)")
+
+                let wrote = writeResponse(
+                    HookResponse(decision: "allow", reason: "Vibe Notch auto-approve rule"),
+                    to: clientSocket
+                )
+                close(clientSocket)
+
+                if wrote {
+                    autoApprovalHandler?(updatedEvent, rule)
+                } else {
+                    // The script gets nothing and falls through to Claude Code's
+                    // own prompt, so show the request rather than pretending it
+                    // was handled.
+                    logger.error("Auto-approve write failed for \(updatedEvent.sessionId.prefix(8), privacy: .public) - falling back to the terminal prompt")
+                    eventHandler?(updatedEvent)
+                }
+                return
+            }
+
+            logger.debug("Permission request - keeping socket open for \(event.sessionId.prefix(8), privacy: .public) tool:\(toolUseId.prefix(12), privacy: .public)")
 
             let pending = PendingPermission(
                 sessionId: event.sessionId,
@@ -470,6 +525,44 @@ class HookSocketServer {
         eventHandler?(event)
     }
 
+    /// The first stored rule that answers this request, or nil to ask the user.
+    private func matchingAutoApproveRule(for event: HookEvent) -> AutoApproveRule? {
+        guard let provider = autoApproveRuleProvider else { return nil }
+        return AutoApproveRule.firstMatch(
+            in: provider(),
+            cwd: event.cwd,
+            toolName: event.tool,
+            toolInput: event.toolInput
+        )
+    }
+
+    /// Write one JSON response to a hook client. Returns false when the bytes
+    /// did not reach the script, which means Claude Code will show its own
+    /// prompt instead. Does not close the socket -- callers own that.
+    @discardableResult
+    private func writeResponse(_ response: HookResponse, to clientSocket: Int32) -> Bool {
+        guard let data = try? JSONEncoder().encode(response) else {
+            logger.error("Failed to encode hook response")
+            return false
+        }
+
+        var succeeded = false
+        data.withUnsafeBytes { bytes in
+            guard let baseAddress = bytes.baseAddress else {
+                logger.error("Failed to get data buffer address")
+                return
+            }
+            let result = write(clientSocket, baseAddress, data.count)
+            if result < 0 {
+                logger.error("Write failed with errno: \(errno)")
+            } else {
+                logger.debug("Write succeeded: \(result) bytes")
+                succeeded = true
+            }
+        }
+        return succeeded
+    }
+
     private func sendPermissionResponse(toolUseId: String, decision: String, reason: String?) {
         permissionsLock.lock()
         guard let pending = pendingPermissions.removeValue(forKey: toolUseId) else {
@@ -479,28 +572,10 @@ class HookSocketServer {
         }
         permissionsLock.unlock()
 
-        let response = HookResponse(decision: decision, reason: reason)
-        guard let data = try? JSONEncoder().encode(response) else {
-            close(pending.clientSocket)
-            return
-        }
-
         let age = Date().timeIntervalSince(pending.receivedAt)
         logger.info("Sending response: \(decision, privacy: .public) for \(pending.sessionId.prefix(8), privacy: .public) tool:\(toolUseId.prefix(12), privacy: .public) (age: \(String(format: "%.1f", age), privacy: .public)s)")
 
-        data.withUnsafeBytes { bytes in
-            guard let baseAddress = bytes.baseAddress else {
-                logger.error("Failed to get data buffer address")
-                return
-            }
-            let result = write(pending.clientSocket, baseAddress, data.count)
-            if result < 0 {
-                logger.error("Write failed with errno: \(errno)")
-            } else {
-                logger.debug("Write succeeded: \(result) bytes")
-            }
-        }
-
+        writeResponse(HookResponse(decision: decision, reason: reason), to: pending.clientSocket)
         close(pending.clientSocket)
     }
 
@@ -520,31 +595,10 @@ class HookSocketServer {
         pendingPermissions.removeValue(forKey: pending.toolUseId)
         permissionsLock.unlock()
 
-        let response = HookResponse(decision: decision, reason: reason)
-        guard let data = try? JSONEncoder().encode(response) else {
-            close(pending.clientSocket)
-            permissionFailureHandler?(sessionId, pending.toolUseId)
-            return
-        }
-
         let age = Date().timeIntervalSince(pending.receivedAt)
         logger.info("Sending response: \(decision, privacy: .public) for \(sessionId.prefix(8), privacy: .public) tool:\(pending.toolUseId.prefix(12), privacy: .public) (age: \(String(format: "%.1f", age), privacy: .public)s)")
 
-        var writeSuccess = false
-        data.withUnsafeBytes { bytes in
-            guard let baseAddress = bytes.baseAddress else {
-                logger.error("Failed to get data buffer address")
-                return
-            }
-            let result = write(pending.clientSocket, baseAddress, data.count)
-            if result < 0 {
-                logger.error("Write failed with errno: \(errno)")
-            } else {
-                logger.debug("Write succeeded: \(result) bytes")
-                writeSuccess = true
-            }
-        }
-
+        let writeSuccess = writeResponse(HookResponse(decision: decision, reason: reason), to: pending.clientSocket)
         close(pending.clientSocket)
 
         if !writeSuccess {
