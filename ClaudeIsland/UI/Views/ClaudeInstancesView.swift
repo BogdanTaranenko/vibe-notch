@@ -39,35 +39,11 @@ struct ClaudeInstancesView: View {
     /// Priority: active (approval/processing/compacting) > waitingForInput > idle
     /// Secondary sort: by last user message date (stable - doesn't change when agent responds)
     /// Note: approval requests stay in their date-based position to avoid layout shift
+    /// Shared with the collapsed notch's indicator row, so the third icon up
+    /// there is the third row down here. The rule and its stability tiebreak
+    /// live in SessionRoster, which is covered by tests.
     private var sortedInstances: [SessionState] {
-        sessionMonitor.instances.sorted { a, b in
-            let priorityA = phasePriority(a.phase)
-            let priorityB = phasePriority(b.phase)
-            if priorityA != priorityB {
-                return priorityA < priorityB
-            }
-            // Sort by last user message date (more recent first)
-            // Fall back to lastActivity if no user messages yet
-            let dateA = a.lastUserMessageDate ?? a.lastActivity
-            let dateB = b.lastUserMessageDate ?? b.lastActivity
-            if dateA != dateB {
-                return dateA > dateB
-            }
-            // sorted(by:) is not stable, so equal dates let rows swap places
-            // between renders — the list visibly reshuffles and the LazyVStack
-            // throws away its placements. sessionId is unique and immutable.
-            return a.sessionId < b.sessionId
-        }
-    }
-
-    /// Lower number = higher priority
-    /// Approval requests share priority with processing to maintain stable ordering
-    private func phasePriority(_ phase: SessionPhase) -> Int {
-        switch phase {
-        case .waitingForApproval, .processing, .compacting: return 0
-        case .waitingForInput: return 1
-        case .idle, .ended: return 2
-        }
+        SessionRoster.sorted(sessionMonitor.instances)
     }
 
     private var instancesList: some View {

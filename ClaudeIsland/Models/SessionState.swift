@@ -372,3 +372,11 @@ struct TaskContext: Equatable, Sendable {
     var description: String?
     var subagentTools: [SubagentToolCall]
 }
+
+// MARK: - SessionRoster
+
+/// SessionState already carries every member the roster reads. The conformance
+/// lives here rather than beside the protocol because this file is app-only:
+/// declaring it in SessionRoster.swift would drag SessionState, and through
+/// ConversationInfo the entire ConversationParser, into the hostless test bundle.
+extension SessionState: SessionSlot {}

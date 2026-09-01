@@ -170,3 +170,30 @@ struct ReadyForInputIndicatorIcon: View {
     }
 }
 
+
+/// The one icon that stands for a single session in the collapsed notch.
+///
+/// Glyph and colour both carry the state rather than colour alone, so the row
+/// still reads for a colour-blind user and in a screenshot: a ticking orange
+/// spinner is work in progress, an amber hand is a permission waiting on an
+/// answer, a green check is a turn that just finished. Quiet phases render
+/// nothing — `SessionRoster.indicators` filters them out before this is asked,
+/// and an icon for "idle" would be a row that never shrinks.
+struct SessionIndicator: View {
+    let phase: SessionPhase
+    var size: CGFloat = 14
+
+    var body: some View {
+        switch phase {
+        case .processing, .compacting:
+            ProcessingSpinner()
+                .frame(width: size)
+        case .waitingForApproval:
+            PermissionIndicatorIcon(size: size, color: TerminalColors.amber)
+        case .waitingForInput:
+            ReadyForInputIndicatorIcon(size: size, color: TerminalColors.green)
+        case .idle, .ended:
+            EmptyView()
+        }
+    }
+}

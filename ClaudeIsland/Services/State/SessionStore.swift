@@ -137,6 +137,7 @@ actor SessionStore {
         // Track new session in Mixpanel
         if isNewSession {
             Mixpanel.mainInstance().track(event: "Session Started")
+            retireSessionsSuperseded(by: sessionId, pid: event.pid)
         }
 
         // A new prompt starts a new turn, so the auto-approval count starts
@@ -1163,6 +1164,26 @@ actor SessionStore {
     /// Check if a process is still running
     private nonisolated func isProcessRunning(pid: Int) -> Bool {
         return kill(Int32(pid), 0) == 0
+    }
+
+    /// Drop sessions the newly-seen `sessionId` has replaced on the same PID.
+    ///
+    /// `/clear`, `/resume` and starting a fresh conversation all mint a new
+    /// session id inside the same `claude` process, and Claude Code sends no
+    /// event to say the previous one is over. `recheckAllSessions` cannot
+    /// collect it either -- it reaps on the PID being gone, and that PID is the
+    /// one that just spoke to us. So without this the old id is tracked for the
+    /// life of the app, frozen in whatever phase it last reported, and each
+    /// `/clear` adds another. The cost used to be invisible because the notch
+    /// grouped every session into one indicator; one indicator per session
+    /// would show every ghost.
+    private func retireSessionsSuperseded(by sessionId: String, pid: Int?) {
+        let stale = SessionRoster.superseded(by: sessionId, pid: pid, in: Array(sessions.values))
+        for staleId in stale {
+            Self.logger.info("Session \(staleId.prefix(8), privacy: .public) superseded by \(sessionId.prefix(8), privacy: .public) on pid \(pid ?? -1, privacy: .public)")
+            sessions.removeValue(forKey: staleId)
+            cancelPendingSync(sessionId: staleId)
+        }
     }
 
     // MARK: - State Publishing
