@@ -181,20 +181,12 @@ actor SessionStore {
 
         let newPhase = event.determinePhase()
 
-        // A tool finishing says nothing about whether the turn is still running,
-        // and PostToolUse can land after the Stop that ended it — a Bash with
-        // run_in_background:true reports ~1s late — or after an interrupt has
-        // already parked the session. Left alone it would legally re-transition
-        // .waitingForInput -> .processing and strand the notch on "Processing..."
-        // until the next prompt. The one phase PostToolUse may still drive is the
-        // recovery out of .waitingForApproval, which is how a permission approved
-        // in the terminal (never returning through our socket) gets reported.
-        let allowPhaseChange: Bool = {
-            if event.event == "PostToolUse" || event.event == "PostToolUseFailure" {
-                return session.phase.isWaitingForApproval
-            }
-            return true
-        }()
+        // Not every event that maps to a phase is evidence for it. A tool
+        // finishing, or a subagent still running after the turn it belonged to
+        // ended, both take edges the state machine considers perfectly legal.
+        // `admits` is where that judgement lives, and it is pure so it can be
+        // tested.
+        let allowPhaseChange = session.phase.admits(newPhase, from: event.event)
 
         if allowPhaseChange, session.phase.canTransition(to: newPhase) {
             session.phase = newPhase

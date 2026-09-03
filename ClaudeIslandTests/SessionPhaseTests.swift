@@ -155,3 +155,118 @@ struct SessionPhaseTests {
         #expect(SessionPhase.idle.canTransition(to: .waitingForInput))
     }
 }
+
+//
+//  Event entitlement
+//
+//  `canTransition(to:)` guards the shape of the machine; `admits(_:from:)`
+//  guards who is allowed to drive it. Both edges exercised below are legal —
+//  that is the whole problem, and why the state machine alone cannot catch it.
+//
+
+@Suite("Which events may drive a phase change")
+struct PhaseAdmissionTests {
+
+    func approval(tool: String = "Bash") -> SessionPhase {
+        .waitingForApproval(PermissionContext(
+            toolUseId: "toolu_01",
+            toolName: tool,
+            toolInput: nil,
+            receivedAt: Date(timeIntervalSince1970: 0)
+        ))
+    }
+
+    // MARK: - The turn is over
+
+    /// The reported bug: the notch shows the finished check, then flips back to
+    /// the working spinner and stays there.
+    ///
+    /// Measured against Claude Code 2.1.259: a subagent that outlives the main
+    /// agent's message goes on firing `PreToolUse` on the *parent* session id
+    /// (145 ms after `Stop` in the capture), and its `SubagentStop` lands
+    /// seconds later still. Both map to `.processing`.
+    @Test("A subagent outliving the turn cannot reopen it", arguments: [
+        "PreToolUse", "SubagentStart", "SubagentStop", "PostCompact", "PermissionDenied",
+    ])
+    func lateTurnEventsCannotResumeAFinishedTurn(event: String) {
+        #expect(
+            SessionPhase.waitingForInput.admits(.processing, from: event) == false,
+            "\(event) after Stop must not drag the notch back to processing"
+        )
+    }
+
+    @Test("A new prompt does reopen it")
+    func aPromptStartsAnotherTurn() {
+        #expect(SessionPhase.waitingForInput.admits(.processing, from: "UserPromptSubmit"))
+    }
+
+    /// Claude Code injects a finished background task as a fresh prompt, which
+    /// is why the gate keys on the event and not on whether a human typed.
+    @Test("Every turn-starting event is one the gate lets through")
+    func turnStartingEventsAreAdmitted() {
+        for event in SessionPhase.turnStartingEvents {
+            #expect(
+                SessionPhase.waitingForInput.admits(.processing, from: event),
+                "\(event) starts a turn and must be admitted"
+            )
+        }
+    }
+
+    /// Only the `.processing` edge is closed. A subagent still running after the
+    /// turn ended can genuinely need an answer, and a permission prompt the user
+    /// never sees is a worse failure than a wrong spinner.
+    @Test("A finished turn still admits phases that are true when they arrive")
+    func finishedTurnStillAdmitsItsOwnTruths() {
+        #expect(SessionPhase.waitingForInput.admits(approval(), from: "PermissionRequest"))
+        #expect(SessionPhase.waitingForInput.admits(.compacting, from: "PreCompact"))
+        #expect(SessionPhase.waitingForInput.admits(.ended, from: "SessionEnd"))
+        #expect(SessionPhase.waitingForInput.admits(.idle, from: "Notification"))
+    }
+
+    // MARK: - Tool completion
+
+    /// PostToolUse says a tool finished, never that the turn did. It arrives
+    /// after the `Stop` that ended the turn (a backgrounded Bash reports ~1 s
+    /// late) and after an interrupt has already parked the session.
+    @Test("PostToolUse never drives anything but the approval recovery")
+    func postToolUseIsInert() {
+        for event in ["PostToolUse", "PostToolUseFailure"] {
+            #expect(SessionPhase.waitingForInput.admits(.processing, from: event) == false)
+            #expect(SessionPhase.idle.admits(.processing, from: event) == false)
+            #expect(SessionPhase.processing.admits(.processing, from: event) == false)
+        }
+    }
+
+    /// The one thing it may still do: report a permission the user answered in
+    /// the terminal, whose decision never comes back through our socket.
+    @Test("PostToolUse still recovers a permission answered in the terminal")
+    func postToolUseRecoversFromApproval() {
+        for event in ["PostToolUse", "PostToolUseFailure"] {
+            #expect(approval().admits(.processing, from: event))
+        }
+    }
+
+    // MARK: - Everything else is untouched
+
+    @Test("A working turn is driven normally")
+    func normalTurnIsUnaffected() {
+        #expect(SessionPhase.processing.admits(approval(), from: "PermissionRequest"))
+        #expect(SessionPhase.processing.admits(.waitingForInput, from: "Stop"))
+        #expect(SessionPhase.processing.admits(.processing, from: "PreToolUse"))
+        #expect(SessionPhase.idle.admits(.processing, from: "PreToolUse"))
+        #expect(approval().admits(.processing, from: "UserPromptSubmit"))
+        #expect(SessionPhase.compacting.admits(.processing, from: "PostCompact"))
+    }
+
+    /// A session first seen mid-turn is created at `.idle`, so closing that edge
+    /// too would strand the app on a session it joined late.
+    @Test("A session joined mid-turn still reaches processing")
+    func idleIsNotGated() {
+        for event in ["PreToolUse", "SubagentStart", "SubagentStop", "PostCompact"] {
+            #expect(
+                SessionPhase.idle.admits(.processing, from: event),
+                "\(event) must still start an idle session"
+            )
+        }
+    }
+}
