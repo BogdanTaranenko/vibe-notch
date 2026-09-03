@@ -15,6 +15,13 @@ class ClaudeSessionMonitor: ObservableObject {
     @Published var instances: [SessionState] = []
     @Published var pendingInstances: [SessionState] = []
 
+    /// How many sessions have started since this monitor was created.
+    ///
+    /// The number itself means nothing -- it is an edge the UI can watch, so a
+    /// view can react to "a session just started" without diffing `instances`
+    /// and mistaking sessions that were already running for new ones.
+    @Published private(set) var startedSessionCount: Int = 0
+
     private var cancellables = Set<AnyCancellable>()
 
     init() {
@@ -22,6 +29,13 @@ class ClaudeSessionMonitor: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] sessions in
                 self?.updateFromSessions(sessions)
+            }
+            .store(in: &cancellables)
+
+        SessionStore.shared.sessionStartedPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.startedSessionCount += 1
             }
             .store(in: &cancellables)
 
