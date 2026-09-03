@@ -15,11 +15,25 @@ private let cornerRadiusInsets = (
     closed: (top: CGFloat(6), bottom: CGFloat(14))
 )
 
-// Hover glow drawn around the collapsed notch — sides and bottom only, the top
+// The glow drawn around the collapsed notch — sides and bottom only, the top
 // edge sits flush against the screen bezel where a glow would have nowhere to go.
-private let hoverGlow = (
+//
+// Two things light it: hovering, which is an affordance and lasts as long as
+// the pointer does, and a session starting, which is an announcement and burns
+// once. They share one ring on purpose — the notch has a single lit look, and
+// a second colour or geometry would read as a different object entirely.
+private let notchGlow = (
     color: Color(red: 0.757, green: 0.373, blue: 0.235), // #c15f3c
     lineWidth: CGFloat(1.5)
+)
+
+// The one-shot announcement: up quickly enough to catch the eye mid-movement,
+// held while the eye arrives, then a slow fade out. It never repeats — a
+// session starts once, and a pulsing notch would read as an unanswered alert.
+private let newSessionGlow = (
+    rise: Animation.easeOut(duration: 0.3),
+    hold: Duration.milliseconds(900),
+    fade: Animation.easeInOut(duration: 1.2)
 )
 
 // The bloom, as concentric blurred strokes rather than shadows of the hairline.
@@ -36,7 +50,7 @@ private let hoverGlow = (
 // the wings either side of the cutout it just washes the notch interior orange
 // behind whatever the row is showing. Clipping it away costs nothing outside —
 // those pixels already integrated ink from both sides of the blur.
-private let hoverGlowLayers: [(width: CGFloat, blur: CGFloat, opacity: Double)] = [
+private let notchGlowLayers: [(width: CGFloat, blur: CGFloat, opacity: Double)] = [
     (width: 20, blur: 16, opacity: 0.30),
     (width: 10, blur: 8, opacity: 0.42),
     (width: 5, blur: 3.5, opacity: 0.60)
@@ -44,8 +58,8 @@ private let hoverGlowLayers: [(width: CGFloat, blur: CGFloat, opacity: Double)] 
 
 // How far the glow mask reaches past the left, right and bottom edges so the
 // widest blurred stroke is not clipped on the three sides that keep it.
-private let hoverGlowSpread: CGFloat = {
-    let widest = hoverGlowLayers[0]
+private let notchGlowSpread: CGFloat = {
+    let widest = notchGlowLayers[0]
     return widest.width / 2 + widest.blur * 3
 }()
 
@@ -59,6 +73,7 @@ struct NotchView: View {
     @State private var isVisible: Bool = false
     @State private var isHovering: Bool = false
     @State private var isBouncing: Bool = false
+    @State private var isAnnouncingNewSession: Bool = false
 
     @Namespace private var activityNamespace
 
@@ -161,18 +176,27 @@ struct NotchView: View {
         viewModel.status != .opened && viewModel.isHovering
     }
 
-    /// The hover glow: blurred strokes stacked widest-first under a crisp
-    /// hairline, masked to the sides and bottom.
-    private var hoverGlowOverlay: some View {
+    /// Whether the ring is lit at all, from either cause.
+    ///
+    /// The two claims are ORed rather than resolved: hovering through the tail
+    /// of an announcement leaves the glow up, and it goes out when the last
+    /// reason to be lit does. Neither side has to know about the other.
+    private var showsGlow: Bool {
+        showsHoverGlow || (viewModel.status != .opened && isAnnouncingNewSession)
+    }
+
+    /// The glow: blurred strokes stacked widest-first under a crisp hairline,
+    /// masked to the sides and bottom.
+    private var notchGlowOverlay: some View {
         ZStack {
             ZStack {
-                ForEach(hoverGlowLayers.indices, id: \.self) { index in
+                ForEach(notchGlowLayers.indices, id: \.self) { index in
                     currentNotchShape
                         .stroke(
-                            hoverGlow.color.opacity(hoverGlowLayers[index].opacity),
-                            lineWidth: hoverGlowLayers[index].width
+                            notchGlow.color.opacity(notchGlowLayers[index].opacity),
+                            lineWidth: notchGlowLayers[index].width
                         )
-                        .blur(radius: hoverGlowLayers[index].blur)
+                        .blur(radius: notchGlowLayers[index].blur)
                 }
             }
             .mask { outwardBloomMask }
@@ -180,18 +204,28 @@ struct NotchView: View {
             // The crisp edge keeps both halves — it is what draws the notch
             // outline, not part of the bloom.
             currentNotchShape
-                .stroke(hoverGlow.color, lineWidth: hoverGlow.lineWidth)
+                .stroke(notchGlow.color, lineWidth: notchGlow.lineWidth)
         }
         .mask(alignment: .top) {
             // Inset past the top stroke, extended well beyond the other three
             // edges: everything drawn at or above the screen edge is clipped,
             // the sides and bottom keep their full blur.
             Rectangle()
-                .padding(.top, hoverGlow.lineWidth)
-                .padding(.horizontal, -hoverGlowSpread)
-                .padding(.bottom, -hoverGlowSpread)
+                .padding(.top, notchGlow.lineWidth)
+                .padding(.horizontal, -notchGlowSpread)
+                .padding(.bottom, -notchGlowSpread)
         }
-        .opacity(showsHoverGlow ? 1 : 0)
+        .opacity(showsGlow ? 1 : 0)
+        // Scoped to this overlay rather than left to the container, whose
+        // sizing animations would otherwise claim the change: a session
+        // starting also moves `expansionWidth` and `hasWaitingForInput` in the
+        // same frame, and the announcement is the one thing here with a
+        // deliberate rise and a much slower fall.
+        .animation(.easeInOut(duration: 0.18), value: showsHoverGlow)
+        .animation(
+            isAnnouncingNewSession ? newSessionGlow.rise : newSessionGlow.fade,
+            value: isAnnouncingNewSession
+        )
         .allowsHitTesting(false)
     }
 
@@ -199,8 +233,8 @@ struct NotchView: View {
     /// bloom is masked with this so it spreads away from the notch only.
     private var outwardBloomMask: some View {
         Rectangle()
-            .padding(.horizontal, -hoverGlowSpread)
-            .padding(.bottom, -hoverGlowSpread)
+            .padding(.horizontal, -notchGlowSpread)
+            .padding(.bottom, -notchGlowSpread)
             .overlay {
                 currentNotchShape
                     .fill(Color.black)
@@ -250,7 +284,7 @@ struct NotchView: View {
                         color: (viewModel.status == .opened || isHovering) ? .black.opacity(0.7) : .clear,
                         radius: 6
                     )
-                    .overlay { hoverGlowOverlay }
+                    .overlay { notchGlowOverlay }
                     .frame(
                         maxWidth: viewModel.status == .opened ? notchSize.width : nil,
                         maxHeight: viewModel.status == .opened ? notchSize.height : nil,
@@ -275,8 +309,17 @@ struct NotchView: View {
                     }
             }
         }
-        .opacity(isVisible || showsHoverGlow ? 1 : 0)
+        .opacity(isVisible || showsGlow ? 1 : 0)
+        // A glow can be the only thing keeping the container on screen — a
+        // session that starts without earning an indicator has nothing else
+        // holding it up. Both causes therefore fade the container on the same
+        // curve they fade the ring on, or the container's exit would cut the
+        // announcement short.
         .animation(.easeInOut(duration: 0.18), value: showsHoverGlow)
+        .animation(
+            isAnnouncingNewSession ? newSessionGlow.rise : newSessionGlow.fade,
+            value: isAnnouncingNewSession
+        )
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .preferredColorScheme(.dark)
         .onAppear {
@@ -295,6 +338,15 @@ struct NotchView: View {
         .onChange(of: sessionMonitor.instances) { _, instances in
             handleProcessingChange()
             handleWaitingForInputChange(instances)
+        }
+        // `.task(id:)` rather than `.onChange`: a second session starting mid
+        // announcement cancels this run and begins a fresh one, instead of two
+        // timers racing to decide when the glow goes out. It also means the
+        // wait dies with the view, which an `asyncAfter` would outlive.
+        .task(id: sessionMonitor.startedSessionCount) {
+            // The initial run is the count's starting value, not a session.
+            guard sessionMonitor.startedSessionCount > 0 else { return }
+            await announceNewSession()
         }
     }
 
@@ -500,6 +552,22 @@ struct NotchView: View {
                 }
             }
         }
+    }
+
+    /// Light the ring once for a session that just started, then let it go.
+    ///
+    /// Cancellation deliberately leaves the glow lit: the only thing that
+    /// cancels this is another session starting, and its own run re-lights the
+    /// ring in the same frame. Fading out first would blink the notch between
+    /// two announcements that the user reads as one arrival.
+    private func announceNewSession() async {
+        isAnnouncingNewSession = true
+        do {
+            try await Task.sleep(for: newSessionGlow.hold)
+        } catch {
+            return
+        }
+        isAnnouncingNewSession = false
     }
 
     private func handleStatusChange(from oldStatus: NotchStatus, to newStatus: NotchStatus) {

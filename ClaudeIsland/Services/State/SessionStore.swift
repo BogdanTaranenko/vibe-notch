@@ -46,6 +46,21 @@ actor SessionStore {
         sessionsSubject.eraseToAnyPublisher()
     }
 
+    /// Fires once with the id of every session this store had never seen
+    /// before -- the moment a session comes into existence, not its state.
+    ///
+    /// Deliberately an edge rather than something derivable from
+    /// `sessionsPublisher`: a subscriber that diffs the session array cannot
+    /// tell a session that just started from one that was already running when
+    /// it subscribed, so a view rebuilt on a screen change would announce every
+    /// live session all over again.
+    private nonisolated(unsafe) let sessionStartedSubject = PassthroughSubject<String, Never>()
+
+    /// Public publisher for UI subscription
+    nonisolated var sessionStartedPublisher: AnyPublisher<String, Never> {
+        sessionStartedSubject.eraseToAnyPublisher()
+    }
+
     // MARK: - Initialization
 
     private init() {}
@@ -138,6 +153,7 @@ actor SessionStore {
         if isNewSession {
             Mixpanel.mainInstance().track(event: "Session Started")
             retireSessionsSuperseded(by: sessionId, pid: event.pid)
+            sessionStartedSubject.send(sessionId)
         }
 
         // A new prompt starts a new turn, so the auto-approval count starts
