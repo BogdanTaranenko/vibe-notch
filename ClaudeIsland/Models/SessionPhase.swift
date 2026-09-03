@@ -152,6 +152,54 @@ enum SessionPhase: Sendable {
         canTransition(to: next) ? next : nil
     }
 
+    // MARK: - Event Entitlement
+
+    /// Hook events that begin a turn.
+    ///
+    /// Claude Code emits one for a prompt the user typed and equally for a turn
+    /// it starts itself — a finished background task is injected as a prompt —
+    /// so this is the whole set, not just the human half.
+    nonisolated static let turnStartingEvents: Set<String> = ["UserPromptSubmit"]
+
+    /// Whether the hook event named `event` is entitled to drive this phase to
+    /// `next`.
+    ///
+    /// `canTransition(to:)` asks whether the edge exists at all. This asks the
+    /// second question the edge cannot answer on its own: whether *this* event
+    /// is evidence for it. Several are not, and the state machine cannot tell,
+    /// because the edges they take are perfectly legal ones.
+    nonisolated func admits(_ next: SessionPhase, from event: String) -> Bool {
+        // A tool finishing says nothing about whether the turn is still running,
+        // and PostToolUse can land after the Stop that ended it — a Bash with
+        // run_in_background:true reports ~1s late — or after an interrupt has
+        // already parked the session. The one phase it may still drive is the
+        // recovery out of .waitingForApproval, which is how a permission
+        // approved in the terminal (never returning through our socket) gets
+        // reported.
+        if event == "PostToolUse" || event == "PostToolUseFailure" {
+            return isWaitingForApproval
+        }
+
+        // Stop is proof the turn ended, and only a turn-starting event begins
+        // another. Claude Code keeps emitting turn-shaped events afterwards: a
+        // subagent that outlived the main message goes on firing PreToolUse,
+        // and its SubagentStop lands whenever it lands — measured at 145 ms and
+        // 7 s after Stop respectively, on the same session id. Every one of them
+        // maps to .processing, so left alone they pull the notch back from the
+        // finished check to the working spinner, and whichever is last strands
+        // it there until the user types again.
+        //
+        // Only the .processing edge is closed. Compaction and permission
+        // requests carry their own phases and are still true whenever they
+        // arrive — a subagent outliving the turn can genuinely need an answer,
+        // and a request the user is never shown is worse than a wrong spinner.
+        if self == .waitingForInput, next == .processing {
+            return Self.turnStartingEvents.contains(event)
+        }
+
+        return true
+    }
+
     /// Whether this phase indicates the session needs user attention
     var needsAttention: Bool {
         switch self {
