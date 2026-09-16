@@ -3,35 +3,35 @@
     <channel>
         <title>Vibe Notch</title>
         <item>
+            <title>1.4.5</title>
+            <pubDate>Wed, 16 Sep 2026 23:49:14 +0000</pubDate>
+            <sparkle:version>15</sparkle:version>
+            <sparkle:shortVersionString>1.4.5</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.6</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/BogdanTaranenko/vibe-notch/releases/download/v1.4.5/VibeNotch-1.4.5.dmg" length="4820443" type="application/octet-stream" sparkle:edSignature="NNf1DFqm7moNe/avrJpyAchZjnjTSH7i+9K2nGI1VNap3GNY6cr1Mq8gY2X/7qrk9z/nwRWljrVCivXJOx69BQ=="/>
+            <sparkle:deltas>
+                <enclosure url="https://github.com/BogdanTaranenko/vibe-notch/releases/download/v1.4.5/VibeNotch-15-14.delta" sparkle:deltaFrom="14" length="485046" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="980464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="OpWLVYJBT6BH8WFxi0+KWgSASort147Y8Tmv8s838IBRoW5VlH0Mnqv9iaUuYi3upL10HGP9WZh1Er7AXGieCg=="/>
+                <enclosure url="https://github.com/BogdanTaranenko/vibe-notch/releases/download/v1.4.5/VibeNotch-15-13.delta" sparkle:deltaFrom="13" length="495890" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="980464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="c3WG57c3hG46mglr7hutwTTVN5l+6mcJi2HsC4+ivWN+/YI721psjTC5AqiZ9TJRZKuHE2DNGjNxDXhP6mwGCw=="/>
+                <enclosure url="https://github.com/BogdanTaranenko/vibe-notch/releases/download/v1.4.5/VibeNotch-15-12.delta" sparkle:deltaFrom="12" length="527582" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="980464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="kDEq6kD81C1jC6IEZ2lCepDPKdQ877YA765H7eetrxX6NitgJjR1EtiNh4QUOy34KT3vskc2HXbv6qG0pF1XDw=="/>
+                <enclosure url="https://github.com/BogdanTaranenko/vibe-notch/releases/download/v1.4.5/VibeNotch-15-11.delta" sparkle:deltaFrom="11" length="532582" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="980464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="gaakAj02IWJwHHcDydh9WUNaQhBLvWNuWFv26GHL5ExQ6key0BSw71Kvyk2LX+35niaiTYAU5VPhtwPTimL0CQ=="/>
+                <enclosure url="https://github.com/BogdanTaranenko/vibe-notch/releases/download/v1.4.5/VibeNotch-15-10.delta" sparkle:deltaFrom="10" length="1558018" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977840" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="JZY7TIOex+Wl6US9LahDHnu0Fn7PFWIOpnERpVA5ext+WufN7OXWMAnp9tpG6XgnHZCYjtgw4BW86TfhHpnxCw=="/>
+            </sparkle:deltas>
+        </item>
+        <item>
             <title>1.4.4</title>
-            <pubDate>Thu, 03 Sep 2026 11:13:37 +0000</pubDate>
+            <pubDate>Wed, 16 Sep 2026 23:48:15 +0000</pubDate>
             <sparkle:version>14</sparkle:version>
             <sparkle:shortVersionString>1.4.4</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>15.6</sparkle:minimumSystemVersion>
             <enclosure url="https://github.com/BogdanTaranenko/vibe-notch/releases/download/v1.4.4/VibeNotch-1.4.4.dmg" length="4758605" type="application/octet-stream" sparkle:edSignature="SygOM5EpELTuD7X/HrXdD0oisxIPKiT67+84dkXdpyoCq0+S2kCKjsnetuSDMw5/ZtF/XWUbfGfJLf0QgVF1CQ=="/>
-            <sparkle:deltas>
-                <enclosure url="https://github.com/BogdanTaranenko/vibe-notch/releases/download/v1.4.4/VibeNotch-14-13.delta" sparkle:deltaFrom="13" length="245374" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="980464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="2W2J8hQBsOR7NtvaB52RbM8NCrcSStmoxquAl/y7y6KoM25ufEXGS1tAgQutqrAEof8ITTp3tSfYsnt0dBVDBQ=="/>
-                <enclosure url="https://github.com/BogdanTaranenko/vibe-notch/releases/download/v1.4.4/VibeNotch-14-12.delta" sparkle:deltaFrom="12" length="390098" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="980464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="+OL2mYC50nX/nGXRQZnXnD7rHCIAWhcNigYZYglofxl+ntr1NErY5mLxFMTV/EfheRpCzyo5ceIXQrFJwuLxCg=="/>
-                <enclosure url="https://github.com/BogdanTaranenko/vibe-notch/releases/download/v1.4.4/VibeNotch-14-11.delta" sparkle:deltaFrom="11" length="398782" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="980464" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="XbCdT19V4ugSse1q34Cy9o8WXDsc3dfKEW1lVD9xVDsfFiOygiUXsKWtsS4BQgPIQy9gsQ1JU9WuHlUIIFDLAQ=="/>
-                <enclosure url="https://github.com/BogdanTaranenko/vibe-notch/releases/download/v1.4.4/VibeNotch-14-10.delta" sparkle:deltaFrom="10" length="1496402" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977840" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="IbQI0VxsZlGKL8Yy5WnnkjKxHXZ4ofvd5F7V/5W9pl8nWd22TPmoMUFIb7sQxGnz5WPm0fJKCmMtl2my+/y2Ag=="/>
-                <enclosure url="https://github.com/BogdanTaranenko/vibe-notch/releases/download/v1.4.4/VibeNotch-14-9.delta" sparkle:deltaFrom="9" length="1519870" type="application/octet-stream" sparkle:deltaFromSparkleExecutableSize="977840" sparkle:deltaFromSparkleLocales="de,he,ar,el,ja,fa,uk" sparkle:edSignature="eh9QYKJnumqVhrDp9Wg8JAA3gyeVWBfRfYIUxtizvARLfNMJHxTdRqCw6FlCQ+4IwwInGXUueGuxquxnbnUdCQ=="/>
-            </sparkle:deltas>
         </item>
         <item>
             <title>1.4.3</title>
-            <pubDate>Thu, 03 Sep 2026 11:12:31 +0000</pubDate>
+            <pubDate>Wed, 16 Sep 2026 23:48:16 +0000</pubDate>
             <sparkle:version>13</sparkle:version>
             <sparkle:shortVersionString>1.4.3</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>15.6</sparkle:minimumSystemVersion>
             <enclosure url="https://github.com/BogdanTaranenko/vibe-notch/releases/download/v1.4.3/VibeNotch-1.4.3.dmg" length="4758296" type="application/octet-stream" sparkle:edSignature="N8A5NJwHh3MFQhh8mavtAiAi1MhhPMjNrdk4JEoqxuOBEDLIB1jdsnSwRWUpvUhtOkjgz5/DqRYUOB7GFgAWBA=="/>
-        </item>
-        <item>
-            <title>1.4.2</title>
-            <pubDate>Thu, 03 Sep 2026 11:12:32 +0000</pubDate>
-            <sparkle:version>12</sparkle:version>
-            <sparkle:shortVersionString>1.4.2</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>15.6</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/BogdanTaranenko/vibe-notch/releases/download/v1.4.2/VibeNotch-1.4.2.dmg" length="4750994" type="application/octet-stream" sparkle:edSignature="/gTgxzIdKzQhr3WxNtJ0X0DsrLLcH/kxSMiHqHwyFJXl+29gjvQIDaN/SoPnazokNtx3rLwOLd+4sOqhlermAA=="/>
         </item>
     </channel>
 </rss>
