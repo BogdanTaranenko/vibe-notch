@@ -2,7 +2,8 @@
 //  UsageLimitsMeter.swift
 //  ClaudeIsland
 //
-//  Compact 5-hour and weekly plan usage gauges for the opened notch header.
+//  The 5-hour and weekly plan usage gauges, as a row at the top of the
+//  session list.
 //
 
 import SwiftUI
@@ -17,39 +18,55 @@ struct UsageLimitsMeter: View {
     var body: some View {
         TimelineView(.periodic(from: .now, by: tick)) { context in
             if let display = limits.display(at: context.date) {
-                HStack(spacing: 10) {
+                HStack(spacing: 16) {
                     if let window = display.fiveHour {
-                        gauge(label: "5h", window: window)
+                        gauge(label: "5h", window: window, now: context.date)
                     }
                     if let window = display.sevenDay {
-                        gauge(label: "7d", window: window)
+                        gauge(label: "7d", window: window, now: context.date)
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 12)
+                .padding(.top, 6)
+                .padding(.bottom, 4)
                 .opacity(display.isStale ? 0.45 : 1)
                 .help(tooltip(for: display, now: context.date))
             }
         }
     }
 
-    private func gauge(label: String, window: RateLimitWindow) -> some View {
-        HStack(spacing: 4) {
+    private func gauge(label: String, window: RateLimitWindow, now: Date) -> some View {
+        HStack(spacing: 6) {
             Text(label)
                 .font(.system(size: 10, weight: .medium))
                 .foregroundColor(.white.opacity(0.4))
 
-            ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(Color.white.opacity(0.1))
-                Capsule()
-                    .fill(fillColor(for: window.fraction))
-                    .frame(width: max(24 * window.fraction, 2))
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.white.opacity(0.12))
+                    Capsule()
+                        .fill(fillColor(for: window.fraction))
+                        .frame(width: max(geometry.size.width * window.fraction, 3))
+                }
             }
-            .frame(width: 24, height: 3)
+            .frame(height: 3)
 
             Text("\(window.percent)%")
                 .font(.system(size: 10, weight: .medium))
-                .foregroundColor(.white.opacity(0.6))
+                .foregroundColor(.white.opacity(0.7))
                 .monospacedDigit()
+                .fixedSize()
+
+            if let reset = window.timeUntilReset(from: now) {
+                Text("resets \(reset)")
+                    .font(.system(size: 10))
+                    .foregroundColor(.white.opacity(0.3))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .fixedSize()
+            }
         }
     }
 
@@ -59,27 +76,14 @@ struct UsageLimitsMeter: View {
         switch fraction {
         case 0.88...: return TerminalColors.red.opacity(0.8)
         case 0.70...: return TerminalColors.amber.opacity(0.8)
-        default: return Color.white.opacity(0.35)
+        default: return Color.white.opacity(0.45)
         }
     }
 
     private func tooltip(for display: RateLimitDisplay, now: Date) -> String {
-        var lines: [String] = []
-        if let window = display.fiveHour {
-            lines.append(describe("5-hour limit", window, now: now))
-        }
-        if let window = display.sevenDay {
-            lines.append(describe("Weekly limit", window, now: now))
-        }
         let age = RateLimitWindow.shortDuration(now.timeIntervalSince(display.receivedAt))
-        lines.append(display.isStale
-            ? "Last reported \(age) ago — usage elsewhere may not be reflected"
-            : "Reported by Claude Code's status line")
-        return lines.joined(separator: "\n")
-    }
-
-    private func describe(_ name: String, _ window: RateLimitWindow, now: Date) -> String {
-        let reset = window.timeUntilReset(from: now).map { " · resets in \($0)" } ?? ""
-        return "\(name): \(window.percent)% used\(reset)"
+        return display.isStale
+            ? "Plan usage last reported \(age) ago — usage elsewhere may not be reflected"
+            : "Plan usage, as reported by Claude Code's status line"
     }
 }
