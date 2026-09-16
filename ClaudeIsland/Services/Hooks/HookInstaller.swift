@@ -256,7 +256,7 @@ struct HookInstaller {
     /// Copy settings.json aside before the first write of each app run. Written
     /// from the bytes we already read rather than re-reading the file, so the
     /// backup is exactly what the write is about to replace.
-    private static func backUpSettings(_ data: Data, at settingsURL: URL) {
+    static func backUpSettings(_ data: Data, at settingsURL: URL) {
         stateLock.lock()
         let alreadyBackedUp = hasBackedUpThisRun
         hasBackedUpThisRun = true
@@ -758,7 +758,7 @@ struct HookInstaller {
         }
     }
 
-    private static func detectPython() -> String {
+    static func detectPython() -> String {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/which")
         process.arguments = ["python3"]

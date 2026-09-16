@@ -120,6 +120,9 @@ typealias AutoApproveRuleProvider = @Sendable () -> [AutoApproveRule]
 /// Callback for a permission answered by a rule rather than by the user
 typealias AutoApprovalHandler = @Sendable (_ event: HookEvent, _ rule: AutoApproveRule) -> Void
 
+/// Callback for a plan usage report from the status line bridge
+typealias RateLimitHandler = @Sendable (RateLimits) -> Void
+
 /// Unix domain socket server that receives events from Claude Code hooks
 /// Uses GCD DispatchSource for non-blocking I/O
 class HookSocketServer {
@@ -132,6 +135,7 @@ class HookSocketServer {
     private var permissionFailureHandler: PermissionFailureHandler?
     private var autoApproveRuleProvider: AutoApproveRuleProvider?
     private var autoApprovalHandler: AutoApprovalHandler?
+    private var rateLimitHandler: RateLimitHandler?
     private let queue = DispatchQueue(label: "com.claudeisland.socket", qos: .userInitiated)
 
     /// Pending permission requests indexed by toolUseId
@@ -190,14 +194,16 @@ class HookSocketServer {
         onEvent: @escaping HookEventHandler,
         onPermissionFailure: PermissionFailureHandler? = nil,
         autoApproveRules: AutoApproveRuleProvider? = nil,
-        onAutoApproved: AutoApprovalHandler? = nil
+        onAutoApproved: AutoApprovalHandler? = nil,
+        onRateLimits: RateLimitHandler? = nil
     ) {
         queue.async { [weak self] in
             self?.startServer(
                 onEvent: onEvent,
                 onPermissionFailure: onPermissionFailure,
                 autoApproveRules: autoApproveRules,
-                onAutoApproved: onAutoApproved
+                onAutoApproved: onAutoApproved,
+                onRateLimits: onRateLimits
             )
         }
     }
@@ -206,7 +212,8 @@ class HookSocketServer {
         onEvent: @escaping HookEventHandler,
         onPermissionFailure: PermissionFailureHandler?,
         autoApproveRules: AutoApproveRuleProvider?,
-        onAutoApproved: AutoApprovalHandler?
+        onAutoApproved: AutoApprovalHandler?,
+        onRateLimits: RateLimitHandler?
     ) {
         guard serverSocket < 0 else { return }
 
@@ -214,6 +221,7 @@ class HookSocketServer {
         permissionFailureHandler = onPermissionFailure
         autoApproveRuleProvider = autoApproveRules
         autoApprovalHandler = onAutoApproved
+        rateLimitHandler = onRateLimits
 
         unlink(Self.socketPath)
 
@@ -486,6 +494,17 @@ class HookSocketServer {
         guard let event = try? JSONDecoder().decode(HookEvent.self, from: data) else {
             logger.warning("Failed to parse event: \(String(data: data, encoding: .utf8) ?? "?", privacy: .public)")
             close(clientSocket)
+            return
+        }
+
+        // A status line report is not a hook event. It is routed away before
+        // it is counted: the health panel reads arrivals as proof the hook
+        // chain works, and a status line can run with no hooks registered.
+        if event.event == StatusLineBridge.eventName {
+            close(clientSocket)
+            if let limits = RateLimits.decode(from: data, receivedAt: Date()) {
+                rateLimitHandler?(limits)
+            }
             return
         }
 

@@ -106,6 +106,11 @@ enum ClaudePaths {
         shellQuote(claudeDir.appendingPathComponent("hooks/claude-island-state.py").path)
     }
 
+    /// The status line bridge, quoted the same way as the hook script.
+    static var statusLineScriptShellPath: String {
+        shellQuote(hooksDir.appendingPathComponent(StatusLineBridge.scriptName).path)
+    }
+
     /// Invalidate the cached directory so the next access re-resolves.
     /// Call this when the user changes AppSettings.claudeDirectoryName.
     static func invalidateCache() {

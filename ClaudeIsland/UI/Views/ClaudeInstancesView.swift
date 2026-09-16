@@ -10,12 +10,22 @@ import SwiftUI
 struct ClaudeInstancesView: View {
     @ObservedObject var sessionMonitor: ClaudeSessionMonitor
     @ObservedObject var viewModel: NotchViewModel
+    @ObservedObject private var rateLimitStore = RateLimitStore.shared
 
     var body: some View {
-        if sessionMonitor.instances.isEmpty {
-            emptyState
-        } else {
-            instancesList
+        VStack(spacing: 0) {
+            // Plan usage sits below the header rather than in it: on a notched
+            // display the middle of the header is behind the camera housing,
+            // and what is left either side is too narrow for both gauges.
+            if rateLimitStore.isEnabled, let limits = rateLimitStore.limits {
+                UsageLimitsMeter(limits: limits)
+            }
+
+            if sessionMonitor.instances.isEmpty {
+                emptyState
+            } else {
+                instancesList
+            }
         }
     }
 

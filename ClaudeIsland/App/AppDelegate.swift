@@ -68,6 +68,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         Mixpanel.mainInstance().flush()
 
         HookInstaller.installIfNeeded()
+        RateLimitStore.shared.sync()
 
         // Ask for Accessibility before the notch exists. The panel's hover and
         // click detection are global NSEvent monitors, so without this grant it
