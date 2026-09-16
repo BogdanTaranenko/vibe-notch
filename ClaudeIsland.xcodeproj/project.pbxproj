@@ -22,6 +22,8 @@
 		FD0F42E72EE7ABA400980302 /* Mixpanel in Frameworks */ = {isa = PBXBuildFile; productRef = FD0F42E62EE7ABA400980302 /* Mixpanel */; };
 		FDA49F7D2EE11E3C00F9612E /* Markdown in Frameworks */ = {isa = PBXBuildFile; productRef = FD33FD722EDF32D7002A6548 /* Markdown */; };
 		FDA49F7E2EE11E3C00F9612E /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = FDA49F7F2EE11E3C00F9612E /* Sparkle */; };
+		7A1C0E5D2B8F4A6391D2E401 /* RateLimits.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0E5D2B8F4A6391D2E402 /* RateLimits.swift */; };
+		7A1C0E5D2B8F4A6391D2E403 /* StatusLineBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1C0E5D2B8F4A6391D2E404 /* StatusLineBridge.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -39,6 +41,8 @@
 		E2BFC8893004EF2580F0C880 /* HookSocketServer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HookSocketServer.swift; path = ClaudeIsland/Services/Hooks/HookSocketServer.swift; sourceTree = "<group>"; };
 		F7F50B1793E20E8F0E53BE31 /* ClaudeIslandTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ClaudeIslandTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		FD33FD5D2EDF32D7002A6548 /* Vibe Notch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Vibe Notch.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		7A1C0E5D2B8F4A6391D2E402 /* RateLimits.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RateLimits.swift; path = ClaudeIsland/Models/RateLimits.swift; sourceTree = "<group>"; };
+		7A1C0E5D2B8F4A6391D2E404 /* StatusLineBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = StatusLineBridge.swift; path = ClaudeIsland/Services/Hooks/StatusLineBridge.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -105,6 +109,8 @@
 				F8C4A63D07E5692BBD39E8F4 /* SessionMeter.swift */,
 				A7B3E52C96D4581FAC28D7E3 /* ClaudeModelPricing.swift */,
 				D9C2F41B85A3470E9B17C6D2 /* UsageInfo.swift */,
+				7A1C0E5D2B8F4A6391D2E404 /* StatusLineBridge.swift */,
+				7A1C0E5D2B8F4A6391D2E402 /* RateLimits.swift */,
 			);
 			name = SourcesUnderTest;
 			sourceTree = "<group>";
@@ -266,6 +272,8 @@
 				C5A3D92E6B4F50C39E7A8203 /* SessionMeter.swift in Sources */,
 				E4F2B81D5C3A49B28D6F7192 /* ClaudeModelPricing.swift in Sources */,
 				B3E1A70C4D2F48A19C5E6081 /* UsageInfo.swift in Sources */,
+				7A1C0E5D2B8F4A6391D2E403 /* StatusLineBridge.swift in Sources */,
+				7A1C0E5D2B8F4A6391D2E401 /* RateLimits.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

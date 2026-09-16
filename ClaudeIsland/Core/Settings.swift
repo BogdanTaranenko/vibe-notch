@@ -40,6 +40,7 @@ enum AppSettings {
         static let notificationSound = "notificationSound"
         static let claudeDirectoryName = "claudeDirectoryName"
         static let autoApproveRules = "autoApproveRules"
+        static let showUsageLimits = "showUsageLimits"
     }
 
     // MARK: - Notification Sound
@@ -71,6 +72,15 @@ enum AppSettings {
         set {
             defaults.set(newValue.trimmingCharacters(in: .whitespaces), forKey: Keys.claudeDirectoryName)
         }
+    }
+
+    // MARK: - Usage Limits
+
+    /// Whether the user has opted in to the plan usage meter. Off by default:
+    /// turning it on takes over settings.json's single statusLine slot.
+    static var showUsageLimits: Bool {
+        get { defaults.bool(forKey: Keys.showUsageLimits) }
+        set { defaults.set(newValue, forKey: Keys.showUsageLimits) }
     }
 
     // MARK: - Auto-Approve Rules

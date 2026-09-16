@@ -98,6 +98,11 @@ class ClaudeSessionMonitor: ObservableObject {
                         ruleId: rule.id
                     ))
                 }
+            },
+            onRateLimits: { limits in
+                Task { @MainActor in
+                    RateLimitStore.shared.record(limits)
+                }
             }
         )
     }

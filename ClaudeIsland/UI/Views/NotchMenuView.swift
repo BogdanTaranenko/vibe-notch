@@ -20,6 +20,7 @@ struct NotchMenuView: View {
     @ObservedObject private var soundSelector = SoundSelector.shared
     @ObservedObject private var autoApproveSelector = AutoApproveRuleSelector.shared
     @ObservedObject private var healthSelector = HealthSelector.shared
+    @ObservedObject private var rateLimitStore = RateLimitStore.shared
     @State private var hooksInstalled: Bool = false
     @State private var hooksOutcome: HookInstallOutcome?
     @State private var launchAtLogin: Bool = false
@@ -31,6 +32,21 @@ struct NotchMenuView: View {
         case .settingsUnreadable: return "Check settings.json"
         case .writeFailed: return "Write failed"
         case .installed, .alreadyCurrent, .none: return nil
+        }
+    }
+
+    /// Why the usage meter could not take the status line slot. Nil shows the
+    /// ordinary On/Off state.
+    private var usageLimitsWarning: String? {
+        switch rateLimitStore.outcome {
+        // Opted in, but the slot was released — only the Hooks toggle does
+        // that, and the row must not read On while nothing can arrive.
+        case .removed where rateLimitStore.isEnabled, .notInstalled where rateLimitStore.isEnabled:
+            return "Paused while Hooks is off"
+        case .unsupportedStatusLine: return "Status line not a command"
+        case .settingsUnreadable: return "Check settings.json"
+        case .writeFailed: return "Write failed"
+        case .installed, .alreadyCurrent, .removed, .notInstalled, .none: return nil
         }
     }
 
@@ -90,6 +106,7 @@ struct NotchMenuView: View {
                 ) {
                     if hooksInstalled {
                         HookInstaller.uninstall()
+                        rateLimitStore.release()
                         hooksInstalled = false
                         hooksOutcome = nil
                     } else {
@@ -100,7 +117,17 @@ struct NotchMenuView: View {
                         HookInstaller.forgetResolvedBinary()
                         hooksOutcome = HookInstaller.installIfNeeded()
                         hooksInstalled = HookInstaller.isInstalled()
+                        rateLimitStore.sync()
                     }
+                }
+
+                MenuToggleRow(
+                    icon: "gauge.with.dots.needle.33percent",
+                    label: "Usage Limits",
+                    isOn: rateLimitStore.isEnabled,
+                    warning: usageLimitsWarning
+                ) {
+                    rateLimitStore.setEnabled(!rateLimitStore.isEnabled)
                 }
 
                 AccessibilityRow(isEnabled: AXIsProcessTrusted())

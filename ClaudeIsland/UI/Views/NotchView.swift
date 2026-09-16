@@ -67,6 +67,7 @@ struct NotchView: View {
     @ObservedObject var viewModel: NotchViewModel
     @StateObject private var sessionMonitor = ClaudeSessionMonitor()
     @ObservedObject private var updateManager = UpdateManager.shared
+    @ObservedObject private var rateLimitStore = RateLimitStore.shared
     @State private var previousPendingIds: Set<String> = []
     @State private var previousWaitingForInputIds: Set<String> = []
     @State private var waitingForInputTimestamps: [String: Date] = [:]  // sessionId -> when it entered waitingForInput
@@ -473,6 +474,12 @@ struct NotchView: View {
             }
 
             Spacer()
+
+            // Plan usage, when the user has opted in and a report has arrived.
+            // Absent rather than empty otherwise.
+            if rateLimitStore.isEnabled, let limits = rateLimitStore.limits {
+                UsageLimitsMeter(limits: limits)
+            }
 
             // Menu toggle
             Button {

@@ -151,6 +151,7 @@ struct ClaudeDirPickerRow: View {
         AppSettings.claudeDirectoryName = path
         ClaudePaths.invalidateCache()
         HookInstaller.installIfNeeded()
+        RateLimitStore.shared.sync()
     }
 }
 
